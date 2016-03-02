@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
-	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"mime/multipart"
@@ -12,11 +12,9 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/BlackEspresso/crawlbase"
-	"github.com/PuerkitoBio/goquery"
 )
 
 var fileStorageUrl string = ""
@@ -36,9 +34,26 @@ func main() {
 	_, err := url.Parse(*urlFlag)
 	checkerror(err)
 
+	logf, err := os.OpenFile("nightcrawler.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	defer logf.Close()
+
+	log.SetOutput(io.MultiWriter(logf, os.Stdout))
+
 	links := make(map[string]bool)
 	links[*urlFlag] = false // startsite
 	fetchSites(links, *delayFlag)
+}
+
+func IsValidScheme(url *url.URL) bool {
+	scheme := url.Scheme
+	if scheme == "http://" || scheme == "https://" {
+		return true
+	} else {
+		return false
+	}
 }
 
 func fetchSites(links map[string]bool, delayMs int) {
@@ -56,7 +71,18 @@ func fetchSites(links map[string]bool, delayMs int) {
 		}
 
 		links[urlStr] = true
-		fmt.Println("parsing site: " + urlStr)
+		nextUrl, err := url.Parse(urlStr)
+
+		if err != nil {
+			log.Println("error while parsing url: " + err.Error())
+			continue
+		}
+		if IsValidScheme(nextUrl) {
+			log.Println("scheme invalid, skipping url:" + nextUrl.String())
+			continue
+		}
+
+		log.Println("parsing site: " + urlStr)
 
 		ht, err := cw.GetPage(urlStr, "GET")
 		content, err := json.Marshal(ht)
@@ -84,34 +110,6 @@ func getNextSite(links map[string]bool) (string, bool) {
 		}
 	}
 	return "", false
-}
-
-func findLinks(urlStr string, doc *goquery.Document, links map[string]bool) {
-	url, err := url.Parse(urlStr)
-	checkerror(err)
-
-	doc.Find("a").Each(func(i int, s *goquery.Selection) {
-		attr, ok := s.Attr("href")
-		if !ok {
-			return
-		}
-		refurl, err := url.Parse(attr)
-		if err != nil {
-			return
-		}
-		absurl := url.ResolveReference(refurl)
-
-		if !strings.Contains(absurl.Host, url.Host) {
-			return
-		}
-
-		_, ok = links[absurl.String()]
-		if ok {
-			return // already exists => return
-		}
-
-		links[absurl.String()] = false
-	})
 }
 
 func checkerror(e error) {
