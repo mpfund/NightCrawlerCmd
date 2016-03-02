@@ -49,7 +49,7 @@ func main() {
 
 func IsValidScheme(url *url.URL) bool {
 	scheme := url.Scheme
-	if scheme == "http://" || scheme == "https://" {
+	if scheme == "http" || scheme == "https" {
 		return true
 	} else {
 		return false
@@ -77,7 +77,7 @@ func fetchSites(links map[string]bool, delayMs int) {
 			log.Println("error while parsing url: " + err.Error())
 			continue
 		}
-		if IsValidScheme(nextUrl) {
+		if !IsValidScheme(nextUrl) {
 			log.Println("scheme invalid, skipping url:" + nextUrl.String())
 			continue
 		}
