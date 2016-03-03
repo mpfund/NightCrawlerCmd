@@ -24,6 +24,7 @@ func main() {
 	fileStorage := flag.String("filestore", "http://localhost:8079/file/7363a35f-f411-4751-96ec-2d19b5a22323", "url to filestore")
 	delayFlag := flag.Int("delay", 1000, "delay, in milliseconds, default is 1000ms=1sec")
 	maxPagesFlag := flag.Int("maxpages", -1, "max pages to crawl, -1 for infinite")
+	inputFolderFlag := flag.String("inputfolder", "", "crawl from folder")
 	flag.Parse()
 
 	fileStorageUrl = *fileStorage
@@ -45,7 +46,7 @@ func main() {
 
 	links := make(map[string]bool)
 	links[*urlFlag] = false // startsite
-	fetchSites(links, *delayFlag, *maxPagesFlag)
+	fetchSites(links, *delayFlag, *maxPagesFlag, *inputFolderFlag)
 }
 
 func IsValidScheme(url *url.URL) bool {
@@ -57,7 +58,7 @@ func IsValidScheme(url *url.URL) bool {
 	}
 }
 
-func fetchSites(links map[string]bool, delayMs int, maxPages int) {
+func fetchSites(links map[string]bool, delayMs int, maxPages int, folder string) {
 	cw := crawlbase.Crawler{}
 	tags, err := crawlbase.LoadTagsFromFile("tags.json")
 	if err != nil {
