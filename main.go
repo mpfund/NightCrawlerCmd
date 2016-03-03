@@ -64,6 +64,7 @@ func fetchSites(links map[string]bool, delayMs int, maxPages int) {
 		log.Fatal(err)
 	}
 	cw.Validator.AddValidTags(tags)
+	cw.IncludeHiddenLinks = false
 	crawlCount := uint64(0)
 
 	for {
