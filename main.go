@@ -23,6 +23,7 @@ func main() {
 	urlFlag := flag.String("url", "", "url, e.g. http://www.google.com")
 	fileStorage := flag.String("filestore", "http://localhost:8079/file/7363a35f-f411-4751-96ec-2d19b5a22323", "url to filestore")
 	delayFlag := flag.Int("delay", 1000, "delay, in milliseconds, default is 1000ms=1sec")
+	maxPagesFlag := flag.Int("maxpages", -1, "max pages to crawl, -1 for infinite")
 	flag.Parse()
 
 	fileStorageUrl = *fileStorage
@@ -44,7 +45,7 @@ func main() {
 
 	links := make(map[string]bool)
 	links[*urlFlag] = false // startsite
-	fetchSites(links, *delayFlag)
+	fetchSites(links, *delayFlag, *maxPagesFlag)
 }
 
 func IsValidScheme(url *url.URL) bool {
@@ -56,17 +57,21 @@ func IsValidScheme(url *url.URL) bool {
 	}
 }
 
-func fetchSites(links map[string]bool, delayMs int) {
+func fetchSites(links map[string]bool, delayMs int, maxPages int) {
 	cw := crawlbase.Crawler{}
 	tags, err := crawlbase.LoadTagsFromFile("tags.json")
 	if err != nil {
 		log.Fatal(err)
 	}
 	cw.Validator.AddValidTags(tags)
+	crawlCount := uint64(0)
 
 	for {
 		urlStr, found := getNextSite(links)
 		if !found {
+			return // done
+		}
+		if maxPages >= 0 && crawlCount >= uint64(maxPages) {
 			return // done
 		}
 
@@ -90,6 +95,7 @@ func fetchSites(links map[string]bool, delayMs int) {
 
 		fileName := strconv.FormatInt(int64(ht.CrawlTime), 10) + ".httpt"
 		savePagePerFile(urlStr, fileName, content)
+		crawlCount += 1
 
 		for _, newLink := range ht.RespInfo.Hrefs {
 			val, hasLink := links[newLink]
