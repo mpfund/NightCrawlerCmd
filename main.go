@@ -33,7 +33,7 @@ func main() {
 		log.Fatal("no url provided.")
 	}
 
-	_, err := url.Parse(*urlFlag)
+	baseUrl, err := url.Parse(*urlFlag)
 	checkerror(err)
 
 	logf, err := os.OpenFile("nightcrawler.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -46,7 +46,7 @@ func main() {
 
 	links := make(map[string]bool)
 	links[*urlFlag] = false // startsite
-	fetchSites(links, *delayFlag, *maxPagesFlag, *inputFolderFlag)
+	fetchSites(links, baseUrl, *delayFlag, *maxPagesFlag, *inputFolderFlag)
 }
 
 func IsValidScheme(url *url.URL) bool {
@@ -58,7 +58,7 @@ func IsValidScheme(url *url.URL) bool {
 	}
 }
 
-func fetchSites(links map[string]bool, delayMs int, maxPages int, folder string) {
+func fetchSites(links map[string]bool, baseUrl *url.URL, delayMs int, maxPages int, folder string) {
 	cw := crawlbase.Crawler{}
 	tags, err := crawlbase.LoadTagsFromFile("tags.json")
 	if err != nil {
@@ -104,7 +104,13 @@ func fetchSites(links map[string]bool, delayMs int, maxPages int, folder string)
 			if hasLink && val == true {
 				continue
 			}
-			links[newLink] = false
+			newLinkUrl, err := url.Parse(newLink)
+			if err != nil {
+				continue
+			}
+			if newLinkUrl.Host == baseUrl.Host {
+				links[newLink] = false
+			}
 		}
 
 		time.Sleep(time.Duration(delayMs) * time.Millisecond)
