@@ -2,16 +2,13 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"flag"
 	"io"
-	"io/ioutil"
 	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/BlackEspresso/crawlbase"
@@ -22,7 +19,7 @@ var fileStorageUrl string = ""
 func main() {
 	urlFlag := flag.String("url", "", "url, e.g. http://www.google.com")
 	fileStorage := flag.String("filestore", "http://localhost:8079/file/7363a35f-f411-4751-96ec-2d19b5a22323", "url to filestore")
-	delayFlag := flag.Int("delay", 1000, "delay, in milliseconds, default is 1000ms=1sec")
+	waitFlag := flag.Int("wait", 1000, "delay, in milliseconds, default is 1000ms=1sec")
 	maxPagesFlag := flag.Int("maxpages", -1, "max pages to crawl, -1 for infinite")
 	inputFolderFlag := flag.String("inputfolder", "", "crawl from folder")
 	flag.Parse()
@@ -34,7 +31,7 @@ func main() {
 	}
 
 	baseUrl, err := url.Parse(*urlFlag)
-	checkerror(err)
+	checkError(err)
 
 	logf, err := os.OpenFile("nightcrawler.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -46,7 +43,13 @@ func main() {
 
 	links := make(map[string]bool)
 	links[*urlFlag] = false // startsite
-	fetchSites(links, baseUrl, *delayFlag, *maxPagesFlag, *inputFolderFlag)
+	fetchSites(links, baseUrl, *waitFlag, *maxPagesFlag, *inputFolderFlag)
+}
+
+func checkError(e error) {
+	if e != nil {
+		log.Fatal(e)
+	}
 }
 
 func IsValidScheme(url *url.URL) bool {
@@ -67,6 +70,7 @@ func fetchSites(links map[string]bool, baseUrl *url.URL, delayMs int, maxPages i
 	cw.Validator.AddValidTags(tags)
 	cw.IncludeHiddenLinks = false
 	crawlCount := uint64(0)
+	cw.WaitBetweenRequests = delayMs
 
 	for {
 		urlStr, found := getNextSite(links)
@@ -92,11 +96,8 @@ func fetchSites(links map[string]bool, baseUrl *url.URL, delayMs int, maxPages i
 		log.Println("parsing site: " + urlStr)
 
 		ht, err := cw.GetPage(urlStr, "GET")
-		content, err := json.Marshal(ht)
-		checkerror(err)
 
-		fileName := strconv.FormatInt(int64(ht.CrawlTime), 10) + ".httpt"
-		savePagePerFile(urlStr, fileName, content)
+		cw.SavePage(ht)
 		crawlCount += 1
 
 		for _, newLink := range ht.RespInfo.Hrefs {
@@ -113,7 +114,7 @@ func fetchSites(links map[string]bool, baseUrl *url.URL, delayMs int, maxPages i
 			}
 		}
 
-		time.Sleep(time.Duration(delayMs) * time.Millisecond)
+		time.Sleep(time.Duration(cw.WaitBetweenRequests) * time.Millisecond)
 	}
 }
 
@@ -124,23 +125,6 @@ func getNextSite(links map[string]bool) (string, bool) {
 		}
 	}
 	return "", false
-}
-
-func checkerror(e error) {
-	if e != nil {
-		log.Fatal(e)
-	}
-}
-
-func savePagePerFile(crawledUri string, fileName string, content []byte) {
-	_, err := os.Stat("./storage")
-	if err != nil && os.IsNotExist(err) {
-		err := os.Mkdir("storage", 0777)
-		checkerror(err)
-	}
-
-	err = ioutil.WriteFile("./storage/"+fileName, content, 0666)
-	checkerror(err)
 }
 
 func saveCrawlHttp(crawledUri string, fileName string, content []byte) {
