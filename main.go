@@ -41,9 +41,7 @@ func main() {
 
 	log.SetOutput(io.MultiWriter(logf, os.Stdout))
 
-	links := make(map[string]bool)
-	links[*urlFlag] = false // startsite
-	fetchSites(links, baseUrl, *waitFlag, *maxPagesFlag, *inputFolderFlag)
+	fetchSites(*urlFlag, baseUrl, *waitFlag, *maxPagesFlag, *inputFolderFlag)
 }
 
 func checkError(e error) {
@@ -61,19 +59,27 @@ func IsValidScheme(url *url.URL) bool {
 	}
 }
 
-func fetchSites(links map[string]bool, baseUrl *url.URL, delayMs int, maxPages int, folder string) {
-	cw := crawlbase.Crawler{}
+func fetchSites(startUrl string, baseUrl *url.URL, delayMs int, maxPages int, folder string) {
+	cw := crawlbase.NewCrawler()
 	tags, err := crawlbase.LoadTagsFromFile("tags.json")
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	cw.Links[startUrl] = false // startsite
+	pagesLoaded, err := cw.LoadPages("./storage")
+	if err != nil {
+		log.Fatal("Loaded pages  error: ", err)
+	}
+	log.Println("Loaded pages: ", pagesLoaded)
+
 	cw.Validator.AddValidTags(tags)
 	cw.IncludeHiddenLinks = false
 	crawlCount := uint64(0)
 	cw.WaitBetweenRequests = delayMs
 
 	for {
-		urlStr, found := getNextSite(links)
+		urlStr, found := cw.GetNextLink()
 		if !found {
 			return // done
 		}
@@ -81,7 +87,7 @@ func fetchSites(links map[string]bool, baseUrl *url.URL, delayMs int, maxPages i
 			return // done
 		}
 
-		links[urlStr] = true
+		cw.Links[urlStr] = true
 		nextUrl, err := url.Parse(urlStr)
 
 		if err != nil {
@@ -101,7 +107,7 @@ func fetchSites(links map[string]bool, baseUrl *url.URL, delayMs int, maxPages i
 		crawlCount += 1
 
 		for _, newLink := range ht.RespInfo.Hrefs {
-			val, hasLink := links[newLink]
+			val, hasLink := cw.Links[newLink]
 			if hasLink && val == true {
 				continue
 			}
@@ -110,21 +116,12 @@ func fetchSites(links map[string]bool, baseUrl *url.URL, delayMs int, maxPages i
 				continue
 			}
 			if newLinkUrl.Host == baseUrl.Host {
-				links[newLink] = false
+				cw.Links[newLink] = false
 			}
 		}
 
 		time.Sleep(time.Duration(cw.WaitBetweenRequests) * time.Millisecond)
 	}
-}
-
-func getNextSite(links map[string]bool) (string, bool) {
-	for i, l := range links {
-		if l == false {
-			return i, true
-		}
-	}
-	return "", false
 }
 
 func saveCrawlHttp(crawledUri string, fileName string, content []byte) {
