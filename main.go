@@ -16,15 +16,23 @@ import (
 
 var fileStorageUrl string = ""
 
+type crawlSettings struct {
+	Url           *url.URL
+	FileStoreUrl  string
+	WaitTime      int
+	MaxPages      int
+	StorageFolder string
+	ReportFile    string
+}
+
 func main() {
 	urlFlag := flag.String("url", "", "url, e.g. http://www.google.com")
-	fileStorage := flag.String("filestore", "http://localhost:8079/file/7363a35f-f411-4751-96ec-2d19b5a22323", "url to filestore")
+	//fileStorage := flag.String("filestore", "http://localhost:8079/file/7363a35f-f411-4751-96ec-2d19b5a22323", "url to filestore")
 	waitFlag := flag.Int("wait", 1000, "delay, in milliseconds, default is 1000ms=1sec")
 	maxPagesFlag := flag.Int("maxpages", -1, "max pages to crawl, -1 for infinite")
-	inputFolderFlag := flag.String("inputfolder", "", "crawl from folder")
+	//storageFolder
+	reportFile := flag.String("reportfile", "", "write report file")
 	flag.Parse()
-
-	fileStorageUrl = *fileStorage
 
 	if *urlFlag == "" {
 		log.Fatal("no url provided.")
@@ -32,6 +40,13 @@ func main() {
 
 	baseUrl, err := url.Parse(*urlFlag)
 	checkError(err)
+
+	settings := crawlSettings{}
+	settings.Url = baseUrl
+	settings.WaitTime = *waitFlag
+	settings.MaxPages = *maxPagesFlag
+	settings.ReportFile = *reportFile
+	settings.StorageFolder = "./storage"
 
 	logf, err := os.OpenFile("nightcrawler.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -41,7 +56,7 @@ func main() {
 
 	log.SetOutput(io.MultiWriter(logf, os.Stdout))
 
-	fetchSites(*urlFlag, baseUrl, *waitFlag, *maxPagesFlag, *inputFolderFlag)
+	fetchSites(&settings)
 }
 
 func checkError(e error) {
@@ -59,31 +74,34 @@ func IsValidScheme(url *url.URL) bool {
 	}
 }
 
-func fetchSites(startUrl string, baseUrl *url.URL, delayMs int, maxPages int, folder string) {
+func fetchSites(settings *crawlSettings) {
 	cw := crawlbase.NewCrawler()
+
+	// html validator settings
 	tags, err := crawlbase.LoadTagsFromFile("tags.json")
 	if err != nil {
 		log.Fatal(err)
 	}
+	cw.Validator.AddValidTags(tags)
 
-	cw.Links[startUrl] = false // startsite
-	pagesLoaded, err := cw.LoadPages("./storage")
+	//resume
+	cw.Links[settings.Url.String()] = false // startsite
+	pagesLoaded, err := cw.LoadPages(settings.StorageFolder)
 	if err != nil {
 		log.Fatal("Loaded pages  error: ", err)
 	}
 	log.Println("Loaded pages: ", pagesLoaded)
 
-	cw.Validator.AddValidTags(tags)
 	cw.IncludeHiddenLinks = false
 	crawlCount := uint64(0)
-	cw.WaitBetweenRequests = delayMs
+	cw.WaitBetweenRequests = settings.WaitTime
 
 	for {
 		urlStr, found := cw.GetNextLink()
 		if !found {
 			return // done
 		}
-		if maxPages >= 0 && crawlCount >= uint64(maxPages) {
+		if settings.MaxPages >= 0 && crawlCount >= uint64(settings.MaxPages) {
 			return // done
 		}
 
@@ -115,7 +133,7 @@ func fetchSites(startUrl string, baseUrl *url.URL, delayMs int, maxPages int, fo
 			if err != nil {
 				continue
 			}
-			if newLinkUrl.Host == baseUrl.Host {
+			if newLinkUrl.Host == settings.Url.Host {
 				cw.Links[newLink] = false
 			}
 		}
