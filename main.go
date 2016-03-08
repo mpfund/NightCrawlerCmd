@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/csv"
 	"flag"
 	"io"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/BlackEspresso/crawlbase"
@@ -31,32 +33,40 @@ func main() {
 	waitFlag := flag.Int("wait", 1000, "delay, in milliseconds, default is 1000ms=1sec")
 	maxPagesFlag := flag.Int("maxpages", -1, "max pages to crawl, -1 for infinite")
 	//storageFolder
-	reportFile := flag.String("reportfile", "", "write report file")
+	reportFile := flag.String("report", "", "generate report")
 	flag.Parse()
 
-	if *urlFlag == "" {
-		log.Fatal("no url provided.")
+	if *urlFlag == "" && *reportFile == "" {
+		log.Fatal("no url or report file provided.")
 	}
-
-	baseUrl, err := url.Parse(*urlFlag)
-	checkError(err)
-
-	settings := crawlSettings{}
-	settings.Url = baseUrl
-	settings.WaitTime = *waitFlag
-	settings.MaxPages = *maxPagesFlag
-	settings.ReportFile = *reportFile
-	settings.StorageFolder = "./storage"
 
 	logf, err := os.OpenFile("nightcrawler.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
-	defer logf.Close()
 
 	log.SetOutput(io.MultiWriter(logf, os.Stdout))
+	defer logf.Close()
 
-	fetchSites(&settings)
+	settings := crawlSettings{}
+
+	settings.WaitTime = *waitFlag
+	settings.MaxPages = *maxPagesFlag
+	settings.ReportFile = *reportFile
+	settings.StorageFolder = "./storage"
+
+	if *urlFlag != "" {
+		baseUrl, err := url.Parse(*urlFlag)
+		checkError(err)
+
+		settings.Url = baseUrl
+
+		fetchSites(&settings)
+	}
+
+	if settings.ReportFile != "" {
+		generateReport(&settings)
+	}
 }
 
 func checkError(e error) {
@@ -74,7 +84,76 @@ func IsValidScheme(url *url.URL) bool {
 	}
 }
 
-func fetchSites(settings *crawlSettings) {
+type PageReport struct {
+	URL          string
+	FileName     string
+	RespDuration int
+}
+
+func generateReport(settings *crawlSettings) {
+
+	f, err := os.Create(settings.ReportFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	files, err := crawlbase.GetPageInfoFiles(settings.StorageFolder)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	cLinks := map[string]*PageReport{}
+	links := map[string]bool{}
+
+	usedUrlQueryKeys := ""
+
+	for _, k := range files {
+		page, err := crawlbase.LoadPage(k, false)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		pr := &PageReport{}
+		pr.RespDuration = page.RespDuration
+		pr.FileName = strconv.Itoa(page.CrawlTime)
+		pr.URL = page.URL
+
+		pUrl, _ := url.Parse(page.URL)
+		for v, _ := range pUrl.Query() {
+			usedUrlQueryKeys += v + ","
+		}
+
+		cLinks[page.URL] = pr
+		for _, href := range page.RespInfo.Hrefs {
+			_, hasUrl := cLinks[href]
+			if !hasUrl {
+				links[href] = false
+			}
+		}
+	}
+
+	w := csv.NewWriter(f)
+
+	w.Write([]string{"crawled links"})
+	w.Write([]string{"FileName", "URL", "Duration (ms)", "Queries"})
+
+	for _, info := range cLinks {
+		dur := info.RespDuration
+		w.Write([]string{
+			info.FileName,
+			info.URL,
+			strconv.Itoa(dur),
+		})
+	}
+	w.Write([]string{})
+	w.Write([]string{"used query keys"})
+	w.Write([]string{usedUrlQueryKeys})
+
+	w.Flush()
+}
+
+func fetchSites(settings *crawlSettings) *crawlbase.Crawler {
 	cw := crawlbase.NewCrawler()
 
 	// html validator settings
@@ -99,10 +178,12 @@ func fetchSites(settings *crawlSettings) {
 	for {
 		urlStr, found := cw.GetNextLink()
 		if !found {
-			return // done
+			log.Println("crawled ", crawlCount, "link(s). all links done.")
+			return cw // done
 		}
 		if settings.MaxPages >= 0 && crawlCount >= uint64(settings.MaxPages) {
-			return // done
+			log.Println("crawled ", crawlCount, "link(s), max pages reached.")
+			return cw // done
 		}
 
 		cw.Links[urlStr] = true
