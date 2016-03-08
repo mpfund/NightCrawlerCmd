@@ -105,8 +105,7 @@ func generateReport(settings *crawlSettings) {
 
 	cLinks := map[string]*PageReport{}
 	links := map[string]bool{}
-
-	usedUrlQueryKeys := ""
+	usedUrlQueryKeys := map[string]bool{}
 
 	for _, k := range files {
 		page, err := crawlbase.LoadPage(k, false)
@@ -121,7 +120,7 @@ func generateReport(settings *crawlSettings) {
 
 		pUrl, _ := url.Parse(page.URL)
 		for v, _ := range pUrl.Query() {
-			usedUrlQueryKeys += v + ","
+			usedUrlQueryKeys[v] = false
 		}
 
 		cLinks[page.URL] = pr
@@ -148,7 +147,9 @@ func generateReport(settings *crawlSettings) {
 	}
 	w.Write([]string{})
 	w.Write([]string{"used query keys"})
-	w.Write([]string{usedUrlQueryKeys})
+	for k, _ := range usedUrlQueryKeys {
+		w.Write([]string{k})
+	}
 
 	w.Flush()
 }
