@@ -88,6 +88,8 @@ type PageReport struct {
 	URL          string
 	FileName     string
 	RespDuration int
+	StatusCode   int
+	Location     string
 }
 
 func generateReport(settings *crawlSettings) {
@@ -117,6 +119,13 @@ func generateReport(settings *crawlSettings) {
 		pr.RespDuration = page.RespDuration
 		pr.FileName = strconv.Itoa(page.CrawlTime)
 		pr.URL = page.URL
+		pr.StatusCode = page.Response.StatusCode
+		pr.Location = ""
+
+		isRedirect, location := crawlbase.LocationFromPage(page)
+		if isRedirect {
+			pr.Location = location
+		}
 
 		pUrl, _ := url.Parse(page.URL)
 		for v, _ := range pUrl.Query() {
@@ -135,18 +144,21 @@ func generateReport(settings *crawlSettings) {
 	w := csv.NewWriter(f)
 
 	w.Write([]string{"crawled links"})
-	w.Write([]string{"FileName", "URL", "Duration (ms)", "Queries"})
+	w.Write([]string{"timestamp", "url", "Http code", "duration (ms)", "redirect url"})
 
 	for _, info := range cLinks {
 		dur := info.RespDuration
 		w.Write([]string{
 			info.FileName,
 			info.URL,
+			strconv.Itoa(info.StatusCode),
 			strconv.Itoa(dur),
+			info.Location,
 		})
 	}
 	w.Write([]string{})
 	w.Write([]string{"used query keys"})
+
 	for k, _ := range usedUrlQueryKeys {
 		w.Write([]string{k})
 	}
