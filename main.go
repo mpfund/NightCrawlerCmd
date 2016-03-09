@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -29,6 +30,7 @@ type crawlSettings struct {
 
 func main() {
 	urlFlag := flag.String("url", "", "url, e.g. http://www.google.com")
+	//urlRegEx := flag.String("regex", "", "only crawl links using this regex")
 	//fileStorage := flag.String("filestore", "http://localhost:8079/file/7363a35f-f411-4751-96ec-2d19b5a22323", "url to filestore")
 	waitFlag := flag.Int("wait", 1000, "delay, in milliseconds, default is 1000ms=1sec")
 	maxPagesFlag := flag.Int("maxpages", -1, "max pages to crawl, -1 for infinite")
@@ -90,6 +92,7 @@ type PageReport struct {
 	RespDuration int
 	StatusCode   int
 	Location     string
+	TextUrl      []string
 }
 
 func generateReport(settings *crawlSettings) {
@@ -105,7 +108,7 @@ func generateReport(settings *crawlSettings) {
 		log.Fatal(err)
 	}
 
-	cLinks := map[string]*PageReport{}
+	pageReports := map[string]*PageReport{}
 	links := map[string]bool{}
 	usedUrlQueryKeys := map[string]bool{}
 
@@ -121,6 +124,7 @@ func generateReport(settings *crawlSettings) {
 		pr.URL = page.URL
 		pr.StatusCode = page.Response.StatusCode
 		pr.Location = ""
+		pr.TextUrl = page.RespInfo.TextUrls
 
 		isRedirect, location := crawlbase.LocationFromPage(page)
 		if isRedirect {
@@ -132,9 +136,9 @@ func generateReport(settings *crawlSettings) {
 			usedUrlQueryKeys[v] = false
 		}
 
-		cLinks[page.URL] = pr
+		pageReports[page.URL] = pr
 		for _, href := range page.RespInfo.Hrefs {
-			_, hasUrl := cLinks[href]
+			_, hasUrl := pageReports[href]
 			if !hasUrl {
 				links[href] = false
 			}
@@ -146,7 +150,7 @@ func generateReport(settings *crawlSettings) {
 	w.Write([]string{"crawled links"})
 	w.Write([]string{"timestamp", "url", "Http code", "duration (ms)", "redirect url"})
 
-	for _, info := range cLinks {
+	for _, info := range pageReports {
 		dur := info.RespDuration
 		w.Write([]string{
 			info.FileName,
@@ -161,6 +165,33 @@ func generateReport(settings *crawlSettings) {
 
 	for k, _ := range usedUrlQueryKeys {
 		w.Write([]string{k})
+	}
+
+	textUrls := map[string]bool{}
+
+	for _, p := range pageReports {
+		for _, u := range p.TextUrl {
+			textUrls[u] = false
+		}
+	}
+
+	for _, k := range pageReports {
+		delete(textUrls, k.URL)
+	}
+
+	textUrlsArr := []string{}
+
+	for u, _ := range textUrls {
+		textUrlsArr = append(textUrlsArr, u)
+	}
+
+	sort.Strings(textUrlsArr)
+
+	w.Write([]string{})
+	w.Write([]string{"found text urls"})
+
+	for _, u := range textUrlsArr {
+		w.Write([]string{u})
 	}
 
 	w.Flush()
