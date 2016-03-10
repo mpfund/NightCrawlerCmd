@@ -36,6 +36,7 @@ type PageReport struct {
 	StatusCode   int
 	Location     string
 	TextUrl      []string
+	Error        string
 }
 
 /* usage examples:
@@ -162,6 +163,7 @@ func generateReport(settings *crawlSettings) {
 		pr.StatusCode = page.Response.StatusCode
 		pr.Location = ""
 		pr.TextUrl = page.RespInfo.TextUrls
+		pr.Error = page.Error
 
 		isRedirect, location := crawlbase.LocationFromPage(page)
 		if isRedirect {
@@ -185,7 +187,7 @@ func generateReport(settings *crawlSettings) {
 	w := csv.NewWriter(f)
 
 	w.Write([]string{"crawled links"})
-	w.Write([]string{"timestamp", "url", "Http code", "duration (ms)", "redirect url"})
+	w.Write([]string{"timestamp", "url", "Http code", "duration (ms)", "redirect url", "error"})
 
 	for _, info := range pageReports {
 		dur := info.RespDuration
@@ -195,6 +197,7 @@ func generateReport(settings *crawlSettings) {
 			strconv.Itoa(info.StatusCode),
 			strconv.Itoa(dur),
 			info.Location,
+			info.Error,
 		})
 	}
 	w.Write([]string{})
