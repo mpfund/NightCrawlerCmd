@@ -165,12 +165,17 @@ func generateReport(settings *crawlSettings) {
 		pr.TextUrl = page.RespInfo.TextUrls
 		pr.Error = page.Error
 
-		isRedirect, location := crawlbase.LocationFromPage(page)
+		pUrl, err := url.Parse(page.URL)
+		if err != nil {
+			log.Println("url invalid, skipping", page.URL)
+			continue
+		}
+
+		isRedirect, location := crawlbase.LocationFromPage(page, pUrl)
 		if isRedirect {
 			pr.Location = location
 		}
 
-		pUrl, _ := url.Parse(page.URL)
 		for v, _ := range pUrl.Query() {
 			usedUrlQueryKeys[v] = false
 		}
@@ -228,10 +233,10 @@ func generateReport(settings *crawlSettings) {
 	sort.Strings(textUrlsArr)
 
 	w.Write([]string{})
-	w.Write([]string{"found text urls"})
+	w.Write([]string{"", "found text urls"})
 
 	for _, u := range textUrlsArr {
-		w.Write([]string{u})
+		w.Write([]string{"", u})
 	}
 
 	w.Flush()
