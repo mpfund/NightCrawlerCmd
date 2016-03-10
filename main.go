@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/csv"
+	"errors"
 	"flag"
 	"io"
 	"log"
@@ -28,14 +29,39 @@ type crawlSettings struct {
 	ReportFile    string
 }
 
+type PageReport struct {
+	URL          string
+	FileName     string
+	RespDuration int
+	StatusCode   int
+	Location     string
+	TextUrl      []string
+}
+
+/* usage examples:
+nightcrawler.exe -url http://www.google.com
+=> starts crawl from site http://www.google.com, only sites with same host (google.com)
+saves files to ./storage
+
+nightcrawler.exe -report test.csv
+=> just generates reports from prev. crawls files stored in ./storage. All urls.
+
+nightcrawler.exe -url http://www.google.com -report test.csv
+=> starts crawl http://www.google.com and generate report for url in the end
+
+nightcrawler.exe -url http://www.google.com -report test.csv -nocrawl
+=> just generate report for url
+
+*/
 func main() {
 	urlFlag := flag.String("url", "", "url, e.g. http://www.google.com")
 	//urlRegEx := flag.String("regex", "", "only crawl links using this regex")
-	//fileStorage := flag.String("filestore", "http://localhost:8079/file/7363a35f-f411-4751-96ec-2d19b5a22323", "url to filestore")
 	waitFlag := flag.Int("wait", 1000, "delay, in milliseconds, default is 1000ms=1sec")
-	maxPagesFlag := flag.Int("maxpages", -1, "max pages to crawl, -1 for infinite")
-	//storageFolder
+	maxPagesFlag := flag.Int("maxpages", -1, "max pages to crawl, -1 for infinite (default)")
+	flag.String("storagetype", "file", "type of storage. (http,file,ftp)")
+	storagePathFlag := flag.String("storagepath", "./storage", "folder to store crawled files")
 	reportFile := flag.String("report", "", "generate report")
+	noCrawlFlag := flag.Bool("nocrawl", false, "skips crawling. Can be used for reporting")
 	flag.Parse()
 
 	if *urlFlag == "" && *reportFile == "" {
@@ -51,19 +77,49 @@ func main() {
 	defer logf.Close()
 
 	settings := crawlSettings{}
-
 	settings.WaitTime = *waitFlag
 	settings.MaxPages = *maxPagesFlag
 	settings.ReportFile = *reportFile
-	settings.StorageFolder = "./storage"
+	settings.StorageFolder = *storagePathFlag
+
+	// html validator settings
+	tags, err := crawlbase.LoadTagsFromFile("tags.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	cw := crawlbase.NewCrawler()
+	cw.Validator.AddValidTags(tags)
+	cw.IncludeHiddenLinks = false
+	cw.WaitBetweenRequests = settings.WaitTime
+
+	// resume
+	pagesLoaded, err := cw.LoadPages(settings.StorageFolder)
+	if err != nil {
+		log.Fatal("Loaded pages  error: ", err)
+	}
+	log.Println("Loaded pages: ", pagesLoaded)
+
+	var baseUrl *url.URL = nil
 
 	if *urlFlag != "" {
-		baseUrl, err := url.Parse(*urlFlag)
+		// parse url & remove all out of scope urls
+		baseUrl, err = url.Parse(*urlFlag)
 		checkError(err)
-
+		cw.RemoveLinksNotSameHost(baseUrl)
 		settings.Url = baseUrl
+	}
 
-		fetchSites(&settings)
+	if baseUrl != nil && !(*noCrawlFlag) {
+		cw.BeforeCrawlFn = func(url string) (string, error) {
+			if settings.MaxPages >= 0 && cw.PageCount >= uint64(settings.MaxPages) {
+				log.Println("crawled ", cw.PageCount, "link(s), max pages reached.")
+				return "", errors.New("max pages reached")
+			}
+			return url, nil
+		}
+
+		cw.FetchSites(baseUrl)
 	}
 
 	if settings.ReportFile != "" {
@@ -77,26 +133,7 @@ func checkError(e error) {
 	}
 }
 
-func IsValidScheme(url *url.URL) bool {
-	scheme := url.Scheme
-	if scheme == "http" || scheme == "https" {
-		return true
-	} else {
-		return false
-	}
-}
-
-type PageReport struct {
-	URL          string
-	FileName     string
-	RespDuration int
-	StatusCode   int
-	Location     string
-	TextUrl      []string
-}
-
 func generateReport(settings *crawlSettings) {
-
 	f, err := os.Create(settings.ReportFile)
 	if err != nil {
 		log.Fatal(err)
@@ -195,76 +232,6 @@ func generateReport(settings *crawlSettings) {
 	}
 
 	w.Flush()
-}
-
-func fetchSites(settings *crawlSettings) *crawlbase.Crawler {
-	cw := crawlbase.NewCrawler()
-
-	// html validator settings
-	tags, err := crawlbase.LoadTagsFromFile("tags.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	cw.Validator.AddValidTags(tags)
-
-	//resume
-	cw.Links[settings.Url.String()] = false // startsite
-	pagesLoaded, err := cw.LoadPages(settings.StorageFolder)
-	if err != nil {
-		log.Fatal("Loaded pages  error: ", err)
-	}
-	log.Println("Loaded pages: ", pagesLoaded)
-
-	cw.IncludeHiddenLinks = false
-	crawlCount := uint64(0)
-	cw.WaitBetweenRequests = settings.WaitTime
-
-	for {
-		urlStr, found := cw.GetNextLink()
-		if !found {
-			log.Println("crawled ", crawlCount, "link(s). all links done.")
-			return cw // done
-		}
-		if settings.MaxPages >= 0 && crawlCount >= uint64(settings.MaxPages) {
-			log.Println("crawled ", crawlCount, "link(s), max pages reached.")
-			return cw // done
-		}
-
-		cw.Links[urlStr] = true
-		nextUrl, err := url.Parse(urlStr)
-
-		if err != nil {
-			log.Println("error while parsing url: " + err.Error())
-			continue
-		}
-		if !IsValidScheme(nextUrl) {
-			log.Println("scheme invalid, skipping url:" + nextUrl.String())
-			continue
-		}
-
-		log.Println("parsing site: " + urlStr)
-
-		ht, err := cw.GetPage(urlStr, "GET")
-
-		cw.SavePage(ht)
-		crawlCount += 1
-
-		for _, newLink := range ht.RespInfo.Hrefs {
-			val, hasLink := cw.Links[newLink]
-			if hasLink && val == true {
-				continue
-			}
-			newLinkUrl, err := url.Parse(newLink)
-			if err != nil {
-				continue
-			}
-			if newLinkUrl.Host == settings.Url.Host {
-				cw.Links[newLink] = false
-			}
-		}
-
-		time.Sleep(time.Duration(cw.WaitBetweenRequests) * time.Millisecond)
-	}
 }
 
 func saveCrawlHttp(crawledUri string, fileName string, content []byte) {
