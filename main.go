@@ -86,15 +86,7 @@ func main() {
 	settings.ReportFile = *reportFile
 	settings.StorageFolder = *storagePathFlag
 
-	// html validator settings
-	tags, err := crawlbase.LoadTagsFromFile("tags.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	cw := crawlbase.NewCrawler()
-	cw.Validator.AddValidTags(tags)
-	cw.IncludeHiddenLinks = false
 	cw.WaitBetweenRequests = settings.WaitTime
 
 	// resume
@@ -153,8 +145,16 @@ func generateReport(settings *crawlSettings) {
 	links := map[string]bool{}
 	usedUrlQueryKeys := map[string]bool{}
 
+	vdtr := htmlcheck.Validator{}
+	tags, err := crawlbase.LoadTagsFromFile("tags.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	vdtr.AddValidTags(tags)
+
 	for _, k := range files {
-		page, err := crawlbase.LoadPage(k, false)
+		page, err := crawlbase.LoadPage(k, true)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -163,14 +163,24 @@ func generateReport(settings *crawlSettings) {
 		pr.RespDuration = page.RespDuration
 		pr.FileName = strconv.Itoa(page.CrawlTime)
 		pr.URL = page.URL
-		pr.StatusCode = page.Response.StatusCode
 		pr.Location = ""
-		pr.TextUrl = page.RespInfo.TextUrls
+
+		body := string(page.ResponseBody)
+		pr.TextUrl = crawlbase.GetUrlsFromText(body)
+
 		pr.Error = page.Error
-		pr.InvalidTags = findInvalidHtmlByType(page.RespInfo.HtmlErrors,
-			htmlcheck.InvTag)
-		pr.InvalidAttributes = findInvalidHtmlByType(page.RespInfo.HtmlErrors,
-			htmlcheck.InvAttribute)
+
+		if page.Response != nil {
+			pr.StatusCode = page.Response.StatusCode
+			if page.Response.ContentMIME == "text/html" {
+				vErros := vdtr.ValidateHtmlString(body)
+				pr.InvalidTags = findInvalidHtmlByType(vErros,
+					htmlcheck.InvTag)
+				pr.InvalidAttributes = findInvalidHtmlByType(vErros,
+					htmlcheck.InvAttribute)
+			}
+
+		}
 
 		pUrl, err := url.Parse(page.URL)
 		if err != nil {
@@ -178,9 +188,11 @@ func generateReport(settings *crawlSettings) {
 			continue
 		}
 
-		isRedirect, location := crawlbase.LocationFromPage(page, pUrl)
-		if isRedirect {
-			pr.Location = location
+		if page.Response != nil {
+			isRedirect, location := crawlbase.LocationFromPage(page, pUrl)
+			if isRedirect {
+				pr.Location = location
+			}
 		}
 
 		for v, _ := range pUrl.Query() {
