@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/BlackEspresso/crawlbase"
+	"github.com/BlackEspresso/htmlcheck"
 )
 
 var fileStorageUrl string = ""
@@ -30,13 +31,15 @@ type crawlSettings struct {
 }
 
 type PageReport struct {
-	URL          string
-	FileName     string
-	RespDuration int
-	StatusCode   int
-	Location     string
-	TextUrl      []string
-	Error        string
+	URL               string
+	FileName          string
+	RespDuration      int
+	StatusCode        int
+	Location          string
+	TextUrl           []string
+	Error             string
+	InvalidTags       []string
+	InvalidAttributes []string
 }
 
 /* usage examples:
@@ -164,6 +167,10 @@ func generateReport(settings *crawlSettings) {
 		pr.Location = ""
 		pr.TextUrl = page.RespInfo.TextUrls
 		pr.Error = page.Error
+		pr.InvalidTags = findInvalidHtmlByType(page.RespInfo.HtmlErrors,
+			htmlcheck.InvTag)
+		pr.InvalidAttributes = findInvalidHtmlByType(page.RespInfo.HtmlErrors,
+			htmlcheck.InvAttribute)
 
 		pUrl, err := url.Parse(page.URL)
 		if err != nil {
@@ -212,6 +219,23 @@ func generateReport(settings *crawlSettings) {
 		w.Write([]string{k})
 	}
 
+	w.Write([]string{})
+	w.Write([]string{"invalid tags"})
+	for _, info := range pageReports {
+		w.Write([]string{
+			info.FileName,
+			info.URL,
+		})
+
+		for _, inv := range info.InvalidTags {
+			w.Write([]string{"tag", inv})
+		}
+		for _, inv := range info.InvalidAttributes {
+			w.Write([]string{"attr", inv})
+		}
+	}
+
+	// text urls
 	textUrls := map[string]bool{}
 
 	for _, p := range pageReports {
@@ -240,6 +264,22 @@ func generateReport(settings *crawlSettings) {
 	}
 
 	w.Flush()
+}
+
+func findInvalidHtmlByType(validations []*htmlcheck.ValidationError,
+	reason htmlcheck.ErrorReason) []string {
+
+	list := []string{}
+	for _, k := range validations {
+		if k.Reason == reason {
+			col := strconv.Itoa(k.TextPos.Column)
+			line := strconv.Itoa(k.TextPos.Line)
+			attr := k.AttributeName
+			list = append(list, "<"+k.TagName+"> "+attr+" ("+col+", "+line+")")
+		}
+
+	}
+	return list
 }
 
 func saveCrawlHttp(crawledUri string, fileName string, content []byte) {

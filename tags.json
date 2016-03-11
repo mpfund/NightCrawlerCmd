@@ -25,7 +25,8 @@
       "dir",
       "accesskey",
       "contenteditable",
-      "translate"
+      "translate",
+	  "title"
     ],
     "AttrRegEx": "^data-"
   },
@@ -135,7 +136,7 @@
   },
   {
     "Name": "input",
-    "Attrs": [ "class", "maxlength", "name", "placeholder", "required", "size", "type", "value", "alt", "src", "autocomplete", "tabindex", "checked", "disabled", "onclick", "style", "title", "aria-autocomplete", "spellcheck", "autofocus" ],
+    "Attrs": [ "class", "maxlength", "name", "placeholder", "required", "size", "type", "value", "alt", "src", "autocomplete", "tabindex", "checked", "disabled", "onclick", "style", "title", "aria-autocomplete", "spellcheck", "autofocus","max","readonly"],
     "IsSelfClosing": true
   },
   {
@@ -185,7 +186,15 @@
   },
   {
     "Name": "form",
-    "Attrs": [ "accept-charset", "action", "name", "method", "target", "novalidate", "autocomplete", "onsubmit" ],
+    "Attrs": [ "accept-charset",
+	"action",
+	"name",
+	"method",
+	"target",
+	"novalidate",
+	"autocomplete",
+	"enctype",
+	"onsubmit" ],
     "IsSelfClosing": false
   },
   {
