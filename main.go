@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/csv"
 	"errors"
 	"flag"
 	"io"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/BlackEspresso/crawlbase"
 	"github.com/BlackEspresso/htmlcheck"
+	"github.com/tealeg/xlsx"
 )
 
 var fileStorageUrl string = ""
@@ -66,6 +66,7 @@ func main() {
 	storagePathFlag := flag.String("storagepath", "./storage", "folder to store crawled files")
 	reportFile := flag.String("report", "", "generate report")
 	noCrawlFlag := flag.Bool("nocrawl", false, "skips crawling. Can be used for reporting")
+	clearStorageFlag := flag.Bool("clearstorage", false, "delete all storage files")
 	flag.Parse()
 
 	if *urlFlag == "" && *reportFile == "" {
@@ -121,6 +122,21 @@ func main() {
 	if settings.ReportFile != "" {
 		generateReport(&settings)
 	}
+
+	if *clearStorageFlag {
+		log.Println("delete storage files")
+		clearStorage(&settings)
+	}
+}
+
+func clearStorage(settings *crawlSettings) {
+	files, err := crawlbase.GetPageInfoFiles(settings.StorageFolder)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, f := range files {
+		os.Remove(f)
+	}
 }
 
 func checkError(e error) {
@@ -130,11 +146,11 @@ func checkError(e error) {
 }
 
 func generateReport(settings *crawlSettings) {
-	f, err := os.Create(settings.ReportFile)
+	file := xlsx.NewFile()
+	sheetUrls, err := file.AddSheet("Crawled Urls")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
 
 	files, err := crawlbase.GetPageInfoFiles(settings.StorageFolder)
 	if err != nil {
@@ -208,42 +224,45 @@ func generateReport(settings *crawlSettings) {
 		}
 	}
 
-	w := csv.NewWriter(f)
-
-	w.Write([]string{"crawled links"})
-	w.Write([]string{"timestamp", "url", "Http code", "duration (ms)", "redirect url", "error"})
+	row := sheetUrls.AddRow()
+	row.WriteSlice(&[]string{"timestamp", "url", "Http code", "duration (ms)", "redirect url", "error"}, -1)
 
 	for _, info := range pageReports {
 		dur := info.RespDuration
-		w.Write([]string{
+		row = sheetUrls.AddRow()
+		row.WriteSlice(&[]string{
 			info.FileName,
 			info.URL,
 			strconv.Itoa(info.StatusCode),
 			strconv.Itoa(dur),
 			info.Location,
 			info.Error,
-		})
+		}, -1)
 	}
-	w.Write([]string{})
-	w.Write([]string{"used query keys"})
 
+	sQueryKeys, _ := file.AddSheet("query keys")
 	for k, _ := range usedUrlQueryKeys {
-		w.Write([]string{k})
+		row = sQueryKeys.AddRow()
+		row.WriteSlice(&[]string{k}, -1)
 	}
 
-	w.Write([]string{})
-	w.Write([]string{"invalid tags"})
+	sInvTags, _ := file.AddSheet("invalid tags")
 	for _, info := range pageReports {
-		w.Write([]string{
-			info.FileName,
-			info.URL,
-		})
+		if len(info.InvalidTags) > 0 || len(info.InvalidAttributes) > 0 {
+			row = sInvTags.AddRow()
+			row.WriteSlice(&[]string{
+				info.FileName,
+				info.URL,
+			}, -1)
 
-		for _, inv := range info.InvalidTags {
-			w.Write([]string{"tag", inv})
-		}
-		for _, inv := range info.InvalidAttributes {
-			w.Write([]string{"attr", inv})
+			for _, inv := range info.InvalidTags {
+				row = sInvTags.AddRow()
+				row.WriteSlice(&[]string{"tag", inv}, -1)
+			}
+			for _, inv := range info.InvalidAttributes {
+				row = sInvTags.AddRow()
+				row.WriteSlice(&[]string{"attr", inv}, -1)
+			}
 		}
 	}
 
@@ -268,14 +287,17 @@ func generateReport(settings *crawlSettings) {
 
 	sort.Strings(textUrlsArr)
 
-	w.Write([]string{})
-	w.Write([]string{"", "found text urls"})
+	sheetTextUrls, _ := file.AddSheet("text urls")
 
 	for _, u := range textUrlsArr {
-		w.Write([]string{"", u})
+		row = sheetTextUrls.AddRow()
+		row.WriteSlice(&[]string{"", u}, -1)
 	}
 
-	w.Flush()
+	err = file.Save(settings.ReportFile)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func findInvalidHtmlByType(validations []*htmlcheck.ValidationError,

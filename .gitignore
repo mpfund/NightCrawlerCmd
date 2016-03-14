@@ -2,3 +2,4 @@ storage/
 NightCrawlerCmd
 *.log
 *.csv
+*.xlsx
