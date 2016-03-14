@@ -180,22 +180,24 @@ func generateReport(settings *crawlSettings) {
 		pr.FileName = strconv.Itoa(page.CrawlTime)
 		pr.URL = page.URL
 		pr.Location = ""
+		pr.InvalidTags = []string{}
+		pr.InvalidAttributes = []string{}
 
 		body := string(page.ResponseBody)
 		pr.TextUrl = crawlbase.GetUrlsFromText(body)
-
 		pr.Error = page.Error
 
 		if page.Response != nil {
 			pr.StatusCode = page.Response.StatusCode
-			if page.Response.ContentMIME == "text/html" {
+
+			mime := crawlbase.GetContentMime(page.Response.Header)
+			if mime == "text/html" {
 				vErros := vdtr.ValidateHtmlString(body)
 				pr.InvalidTags = findInvalidHtmlByType(vErros,
 					htmlcheck.InvTag)
 				pr.InvalidAttributes = findInvalidHtmlByType(vErros,
 					htmlcheck.InvAttribute)
 			}
-
 		}
 
 		pUrl, err := url.Parse(page.URL)
@@ -291,7 +293,7 @@ func generateReport(settings *crawlSettings) {
 
 	for _, u := range textUrlsArr {
 		row = sheetTextUrls.AddRow()
-		row.WriteSlice(&[]string{"", u}, -1)
+		row.WriteSlice(&[]string{u}, -1)
 	}
 
 	err = file.Save(settings.ReportFile)
