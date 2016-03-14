@@ -184,7 +184,7 @@ func generateReport(settings *crawlSettings) {
 		pr.InvalidAttributes = []string{}
 
 		body := string(page.ResponseBody)
-		pr.TextUrl = crawlbase.GetUrlsFromText(body)
+		pr.TextUrl = crawlbase.GetUrlsFromText(body, 100)
 		pr.Error = page.Error
 
 		if page.Response != nil {
@@ -194,9 +194,9 @@ func generateReport(settings *crawlSettings) {
 			if mime == "text/html" {
 				vErros := vdtr.ValidateHtmlString(body)
 				pr.InvalidTags = findInvalidHtmlByType(vErros,
-					htmlcheck.InvTag)
+					htmlcheck.InvTag, 10)
 				pr.InvalidAttributes = findInvalidHtmlByType(vErros,
-					htmlcheck.InvAttribute)
+					htmlcheck.InvAttribute, 10)
 			}
 		}
 
@@ -303,17 +303,22 @@ func generateReport(settings *crawlSettings) {
 }
 
 func findInvalidHtmlByType(validations []*htmlcheck.ValidationError,
-	reason htmlcheck.ErrorReason) []string {
+	reason htmlcheck.ErrorReason, max int) []string {
 
 	list := []string{}
+	c := 0
 	for _, k := range validations {
 		if k.Reason == reason {
 			col := strconv.Itoa(k.TextPos.Column)
 			line := strconv.Itoa(k.TextPos.Line)
 			attr := k.AttributeName
 			list = append(list, "<"+k.TagName+"> "+attr+" ("+col+", "+line+")")
+			c += 1
 		}
 
+		if c > max {
+			break
+		}
 	}
 	return list
 }
