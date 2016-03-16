@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime/pprof"
 	"sort"
 	"strconv"
 	"time"
@@ -145,7 +146,14 @@ func checkError(e error) {
 	}
 }
 
+func writeHeap(num string) {
+	f, _ := os.Create("heap_" + num + ".pprof")
+	pprof.WriteHeapProfile(f)
+	f.Close()
+
+}
 func generateReport(settings *crawlSettings) {
+	writeHeap("0")
 	file := xlsx.NewFile()
 	sheetUrls, err := file.AddSheet("Crawled Urls")
 	if err != nil {
@@ -226,6 +234,7 @@ func generateReport(settings *crawlSettings) {
 		}
 	}
 
+	writeHeap("1")
 	row := sheetUrls.AddRow()
 	row.WriteSlice(&[]string{"timestamp", "url", "Http code", "duration (ms)", "redirect url", "error"}, -1)
 
