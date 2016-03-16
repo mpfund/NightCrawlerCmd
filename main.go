@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"flag"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime/debug"
 	"runtime/pprof"
 	"sort"
 	"strconv"
@@ -29,6 +31,7 @@ type crawlSettings struct {
 	MaxPages      int
 	StorageFolder string
 	ReportFile    string
+	Profile       bool
 }
 
 type PageReport struct {
@@ -62,12 +65,13 @@ func main() {
 	urlFlag := flag.String("url", "", "url, e.g. http://www.google.com")
 	//urlRegEx := flag.String("regex", "", "only crawl links using this regex")
 	waitFlag := flag.Int("wait", 1000, "delay, in milliseconds, default is 1000ms=1sec")
-	maxPagesFlag := flag.Int("maxpages", -1, "max pages to crawl, -1 for infinite (default)")
-	flag.String("storagetype", "file", "type of storage. (http,file,ftp)")
+	maxPagesFlag := flag.Int("maxPages", -1, "max pages to crawl, -1 for infinite (default)")
+	flag.String("storageType", "file", "type of storage. (http,file,ftp)")
 	storagePathFlag := flag.String("storagepath", "./storage", "folder to store crawled files")
 	reportFile := flag.String("report", "", "generate report")
 	noCrawlFlag := flag.Bool("nocrawl", false, "skips crawling. Can be used for reporting")
-	clearStorageFlag := flag.Bool("clearstorage", false, "delete all storage files")
+	clearStorageFlag := flag.Bool("clearStorage", false, "delete all storage files")
+	profile := flag.Bool("profile", false, "enable profiling")
 	flag.Parse()
 
 	if *urlFlag == "" && *reportFile == "" {
@@ -87,6 +91,7 @@ func main() {
 	settings.MaxPages = *maxPagesFlag
 	settings.ReportFile = *reportFile
 	settings.StorageFolder = *storagePathFlag
+	settings.Profile = *profile
 
 	cw := crawlbase.NewCrawler()
 	cw.WaitBetweenRequests = settings.WaitTime
@@ -147,13 +152,24 @@ func checkError(e error) {
 }
 
 func writeHeap(num string) {
-	f, _ := os.Create("heap_" + num + ".pprof")
+	folder := "./profiling"
+	_, err := os.Stat(folder)
+	if err != nil {
+		err = os.Mkdir(folder, 0777)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	f, err := os.Create(folder + "/heap_" + num + ".pprof")
+	if err != nil {
+		log.Fatal(err)
+	}
 	pprof.WriteHeapProfile(f)
 	f.Close()
 
 }
 func generateReport(settings *crawlSettings) {
-	writeHeap("0")
 	file := xlsx.NewFile()
 	sheetUrls, err := file.AddSheet("Crawled Urls")
 	if err != nil {
@@ -177,6 +193,7 @@ func generateReport(settings *crawlSettings) {
 
 	vdtr.AddValidTags(tags)
 
+	startTime := time.Now()
 	for _, k := range files {
 		page, err := crawlbase.LoadPage(k, true)
 		if err != nil {
@@ -192,7 +209,7 @@ func generateReport(settings *crawlSettings) {
 		pr.InvalidAttributes = []string{}
 
 		body := string(page.ResponseBody)
-		pr.TextUrl = crawlbase.GetUrlsFromText(body, 100)
+		//pr.TextUrl = crawlbase.GetUrlsFromText(body, 10)
 		pr.Error = page.Error
 
 		if page.Response != nil {
@@ -232,9 +249,23 @@ func generateReport(settings *crawlSettings) {
 				links[href] = false
 			}
 		}
+
+		// free
+		page.ResponseBody = []byte{}
 	}
 
-	writeHeap("1")
+	if settings.Profile {
+		log.Println("loaded content in ", time.Now().Sub(startTime))
+
+		debug.FreeOSMemory()
+
+		log.Println("freeing...")
+		bio := bufio.NewReader(os.Stdin)
+		bio.ReadLine()
+
+		writeHeap("0")
+	}
+
 	row := sheetUrls.AddRow()
 	row.WriteSlice(&[]string{"timestamp", "url", "Http code", "duration (ms)", "redirect url", "error"}, -1)
 

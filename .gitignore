@@ -3,3 +3,7 @@ NightCrawlerCmd
 *.log
 *.csv
 *.xlsx
+*.7z
+*.pprof
+*.httpi
+*.respbin
