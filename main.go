@@ -195,7 +195,7 @@ func generateReport(settings *crawlSettings) {
 
 	pageReports := map[string]*PageReport{}
 	links := map[string]bool{}
-	usedUrlQueryKeys := map[string]bool{}
+	usedUrlQueryKeys := map[string]string{}
 
 	vdtr := htmlcheck.Validator{}
 	tags, err := crawlbase.LoadTagsFromFile("tags.json")
@@ -227,7 +227,7 @@ func generateReport(settings *crawlSettings) {
 		pr.InvalidTags = []string{}
 		pr.InvalidAttributes = []string{}
 
-		pr.TextUrl = crawlbase.GetUrlsFromText(page.ResponseBody, 5)
+		pr.TextUrl = crawlbase.GetUrlsFromText(page.ResponseBody, 100)
 		pr.Error = page.Error
 
 		if page.Response != nil {
@@ -245,7 +245,7 @@ func generateReport(settings *crawlSettings) {
 
 				invs = filterInvalidHtmlByType(vErros, htmlcheck.InvAttribute, 10)
 				htmlcheck.GetErrorLines(body, invs)
-				pr.InvalidTags = validationErrorToText(invs)
+				pr.InvalidAttributes = validationErrorToText(invs)
 			}
 		}
 
@@ -263,7 +263,7 @@ func generateReport(settings *crawlSettings) {
 		}
 
 		for v, _ := range pUrl.Query() {
-			usedUrlQueryKeys[v] = false
+			usedUrlQueryKeys[v] = pUrl.String()
 		}
 
 		pageReports[page.URL] = pr
@@ -300,9 +300,9 @@ func generateReport(settings *crawlSettings) {
 	}
 
 	sQueryKeys, _ := file.AddSheet("query keys")
-	for k, _ := range usedUrlQueryKeys {
+	for k, v := range usedUrlQueryKeys {
 		row = sQueryKeys.AddRow()
-		row.WriteSlice(&[]string{k}, -1)
+		row.WriteSlice(&[]string{k, v}, -1)
 	}
 
 	sInvTags, _ := file.AddSheet("invalid tags")
@@ -334,6 +334,7 @@ func generateReport(settings *crawlSettings) {
 		}
 	}
 
+	// removed crawled urls, keep only new, uncralwed ones
 	for _, k := range pageReports {
 		delete(textUrls, k.URL)
 	}
