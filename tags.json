@@ -28,7 +28,8 @@
       "translate",
 	  "title"
     ],
-    "AttrRegEx": "^data-"
+	"AttrStartsWith":"data-",
+    "AttrRegEx": "data-"
   },
   {
     "Name": "a",

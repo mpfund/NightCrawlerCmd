@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"flag"
@@ -11,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"runtime/debug"
 	"runtime/pprof"
 	"sort"
 	"strconv"
@@ -32,6 +30,7 @@ type crawlSettings struct {
 	StorageFolder string
 	ReportFile    string
 	Profile       bool
+	ProfileFolder string
 }
 
 type PageReport struct {
@@ -40,7 +39,7 @@ type PageReport struct {
 	RespDuration      int
 	StatusCode        int
 	Location          string
-	TextUrl           []string
+	TextUrl           [][]byte
 	Error             string
 	InvalidTags       []string
 	InvalidAttributes []string
@@ -92,6 +91,7 @@ func main() {
 	settings.ReportFile = *reportFile
 	settings.StorageFolder = *storagePathFlag
 	settings.Profile = *profile
+	settings.ProfileFolder = "./profiling/"
 
 	cw := crawlbase.NewCrawler()
 	cw.WaitBetweenRequests = settings.WaitTime
@@ -151,8 +151,8 @@ func checkError(e error) {
 	}
 }
 
-func writeHeap(num string) {
-	folder := "./profiling"
+func writeHeap(path, num string) {
+	folder := path
 	_, err := os.Stat(folder)
 	if err != nil {
 		err = os.Mkdir(folder, 0777)
@@ -167,9 +167,23 @@ func writeHeap(num string) {
 	}
 	pprof.WriteHeapProfile(f)
 	f.Close()
-
 }
+
+func logFatal(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func logPrint(err error) {
+	if err != nil {
+		log.Print(err)
+	}
+}
+
 func generateReport(settings *crawlSettings) {
+	startTime := time.Now()
+
 	file := xlsx.NewFile()
 	sheetUrls, err := file.AddSheet("Crawled Urls")
 	if err != nil {
@@ -177,9 +191,7 @@ func generateReport(settings *crawlSettings) {
 	}
 
 	files, err := crawlbase.GetPageInfoFiles(settings.StorageFolder)
-	if err != nil {
-		log.Fatal(err)
-	}
+	logFatal(err)
 
 	pageReports := map[string]*PageReport{}
 	links := map[string]bool{}
@@ -193,7 +205,14 @@ func generateReport(settings *crawlSettings) {
 
 	vdtr.AddValidTags(tags)
 
-	startTime := time.Now()
+	if settings.Profile {
+		f, err := os.Create(settings.ProfileFolder + "cpuprofile.pprof")
+		logFatal(err)
+		pprof.StartCPUProfile(f)
+		defer f.Close()
+		defer pprof.StopCPUProfile()
+	}
+
 	for _, k := range files {
 		page, err := crawlbase.LoadPage(k, true)
 		if err != nil {
@@ -208,20 +227,25 @@ func generateReport(settings *crawlSettings) {
 		pr.InvalidTags = []string{}
 		pr.InvalidAttributes = []string{}
 
-		body := string(page.ResponseBody)
-		//pr.TextUrl = crawlbase.GetUrlsFromText(body, 10)
+		pr.TextUrl = crawlbase.GetUrlsFromText(page.ResponseBody, 5)
 		pr.Error = page.Error
 
 		if page.Response != nil {
 			pr.StatusCode = page.Response.StatusCode
 
 			mime := crawlbase.GetContentMime(page.Response.Header)
+
 			if mime == "text/html" {
+				body := string(page.ResponseBody)
 				vErros := vdtr.ValidateHtmlString(body)
-				pr.InvalidTags = findInvalidHtmlByType(vErros,
-					htmlcheck.InvTag, 10)
-				pr.InvalidAttributes = findInvalidHtmlByType(vErros,
-					htmlcheck.InvAttribute, 10)
+
+				invs := filterInvalidHtmlByType(vErros, htmlcheck.InvTag, 10)
+				htmlcheck.GetErrorLines(body, invs)
+				pr.InvalidTags = validationErrorToText(invs)
+
+				invs = filterInvalidHtmlByType(vErros, htmlcheck.InvAttribute, 10)
+				htmlcheck.GetErrorLines(body, invs)
+				pr.InvalidTags = validationErrorToText(invs)
 			}
 		}
 
@@ -256,14 +280,7 @@ func generateReport(settings *crawlSettings) {
 
 	if settings.Profile {
 		log.Println("loaded content in ", time.Now().Sub(startTime))
-
-		debug.FreeOSMemory()
-
-		log.Println("freeing...")
-		bio := bufio.NewReader(os.Stdin)
-		bio.ReadLine()
-
-		writeHeap("0")
+		writeHeap(settings.ProfileFolder, "0")
 	}
 
 	row := sheetUrls.AddRow()
@@ -313,7 +330,7 @@ func generateReport(settings *crawlSettings) {
 
 	for _, p := range pageReports {
 		for _, u := range p.TextUrl {
-			textUrls[u] = false
+			textUrls[string(u)] = false
 		}
 	}
 
@@ -340,27 +357,39 @@ func generateReport(settings *crawlSettings) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	if settings.Profile {
+		log.Println("report generated in ", time.Now().Sub(startTime))
+	}
 }
 
-func findInvalidHtmlByType(validations []*htmlcheck.ValidationError,
-	reason htmlcheck.ErrorReason, max int) []string {
-
+func validationErrorToText(validations []*htmlcheck.ValidationError) []string {
 	list := []string{}
+	for _, k := range validations {
+		col := strconv.Itoa(k.TextPos.Column)
+		line := strconv.Itoa(k.TextPos.Line)
+		attr := k.AttributeName
+		list = append(list, "<"+k.TagName+"> "+attr+" ("+col+", "+line+")")
+	}
+	return list
+}
+
+func filterInvalidHtmlByType(validations []*htmlcheck.ValidationError,
+	reason htmlcheck.ErrorReason, max int) []*htmlcheck.ValidationError {
+
+	errors := []*htmlcheck.ValidationError{}
 	c := 0
 	for _, k := range validations {
 		if k.Reason == reason {
-			col := strconv.Itoa(k.TextPos.Column)
-			line := strconv.Itoa(k.TextPos.Line)
-			attr := k.AttributeName
-			list = append(list, "<"+k.TagName+"> "+attr+" ("+col+", "+line+")")
-			c += 1
+			errors = append(errors, k)
 		}
 
 		if c > max {
 			break
 		}
 	}
-	return list
+
+	return errors
 }
 
 func saveCrawlHttp(crawledUri string, fileName string, content []byte) {
