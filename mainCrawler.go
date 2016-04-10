@@ -363,7 +363,11 @@ func generateReport(settings *crawlSettings) {
 
 	for _, u := range textUrlsArr {
 		row = sheetTextUrls.AddRow()
-		row.WriteSlice(&[]string{u, textUrls[u]}, -1)
+		k := textUrls[u]
+		if k == "" {
+			k = " "
+		}
+		row.WriteSlice(&[]string{u, k}, -1)
 	}
 
 	err = file.Save(settings.ReportFile)
