@@ -1,5 +1,4 @@
 storage/
-NightCrawlerCmd
 *.log
 *.csv
 *.xlsx
@@ -7,3 +6,6 @@ NightCrawlerCmd
 *.pprof
 *.httpi
 *.respbin
+*.exe
+WebSec
+*.txt
