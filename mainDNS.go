@@ -27,7 +27,7 @@ func mainDNS() {
 	domain := fs.String("domain", "", "domain for dns scan")
 	subdomains := fs.String("subdomains", "", "subdomain list for bf scan")
 	logFile := fs.String("output", "dnsscan.log", "")
-	resume := fs.Bool("resume", false, "resume from old scan")
+	resume := fs.Bool("resume", false, "resume, load logs and resume. skips alreads scanned urls")
 	dnsType := fs.String("typeName", "", "request type by name (A,AAAA,MX,ANY)")
 	dnsTypeNr := fs.Int("typeNumber", 1, "request type by number (1,28,15,255)")
 
