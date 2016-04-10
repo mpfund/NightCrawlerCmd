@@ -66,12 +66,12 @@ func mainCrawler() {
 	urlFlag := fs.String("url", "", "url, e.g. http://www.google.com")
 	//urlRegEx := flag.String("regex", "", "only crawl links using this regex")
 	waitFlag := fs.Int("wait", 1000, "delay, in milliseconds, default is 1000ms=1sec")
-	maxPagesFlag := fs.Int("maxPages", -1, "max pages to crawl, -1 for infinite (default)")
-	fs.String("storageType", "file", "type of storage. (http,file,ftp)")
-	storagePathFlag := fs.String("storagepath", "./storage", "folder to store crawled files")
+	maxPagesFlag := fs.Int("max-pages", -1, "max pages to crawl, -1 for infinite (default)")
+	//fs.String("storageType", "file", "type of storage. (http,file,ftp)")
+	storagePathFlag := fs.String("storage-path", "./storage", "folder to store crawled files")
 	reportFile := fs.String("report", "", "generate report")
-	noCrawlFlag := fs.Bool("nocrawl", false, "skips crawling. Can be used for reporting")
-	clearStorageFlag := fs.Bool("clearStorage", false, "delete all storage files")
+	noCrawlFlag := fs.Bool("no-crawl", false, "skips crawling. Can be used for reporting")
+	clearStorageFlag := fs.Bool("clear-storage", false, "delete all storage files")
 	profile := fs.Bool("profile", false, "enable profiling")
 
 	fs.Parse(os.Args[2:])
@@ -100,6 +100,10 @@ func mainCrawler() {
 	cw.WaitBetweenRequests = settings.WaitTime
 
 	// resume
+	if doesExists, _ := exists(settings.StorageFolder); !doesExists {
+		os.Mkdir(settings.StorageFolder, 0777)
+	}
+
 	pagesLoaded, err := cw.LoadPages(settings.StorageFolder)
 	if err != nil {
 		log.Fatal("Loaded pages  error: ", err)
@@ -136,6 +140,17 @@ func mainCrawler() {
 		log.Println("delete storage files")
 		clearStorage(&settings)
 	}
+}
+
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return true, err
 }
 
 func clearStorage(settings *crawlSettings) {
@@ -271,7 +286,7 @@ func generateReport(settings *crawlSettings) {
 			}
 		}
 
-		// free
+		// free page body
 		page.ResponseBody = []byte{}
 	}
 
@@ -323,11 +338,11 @@ func generateReport(settings *crawlSettings) {
 	}
 
 	// text urls
-	textUrls := map[string]bool{}
+	textUrls := map[string]string{}
 
 	for _, p := range pageReports {
 		for _, u := range p.TextUrl {
-			textUrls[string(u)] = false
+			textUrls[string(u)] = p.URL
 		}
 	}
 
@@ -348,10 +363,10 @@ func generateReport(settings *crawlSettings) {
 
 	for _, u := range textUrlsArr {
 		row = sheetTextUrls.AddRow()
-		row.WriteSlice(&[]string{u}, -1)
+		row.WriteSlice(&[]string{u, textUrls[u]}, -1)
 	}
 
-	err = file.Save(settings.ReportFile)
+	err = file.Save(settings.ReportFile + ".xlsx")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -367,7 +382,7 @@ func validationErrorToText(validations []*htmlcheck.ValidationError) []string {
 		col := strconv.Itoa(k.TextPos.Column)
 		line := strconv.Itoa(k.TextPos.Line)
 		attr := k.AttributeName
-		list = append(list, "<"+k.TagName+"> "+attr+" ("+col+", "+line+")")
+		list = append(list, "<"+k.TagName+"> "+attr+" ("+line+", "+col+")")
 	}
 	return list
 }

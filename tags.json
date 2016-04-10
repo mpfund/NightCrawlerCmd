@@ -26,6 +26,7 @@
       "accesskey",
       "contenteditable",
       "translate",
+      "align"
 	  "title"
     ],
 	"AttrStartsWith":"data-",
@@ -58,6 +59,11 @@
   {
     "Name": "p",
     "Attrs": [ "dir" ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "s",
+    "Attrs": [ ],
     "IsSelfClosing": false
   },
   {
@@ -97,7 +103,7 @@
   },
   {
     "Name": "script",
-    "Attrs": [ "type", "src", "language", "charset", "async","defer" ],
+    "Attrs": [ "type", "src", "language", "charset", "async","defer","nonce" ],
     "IsSelfClosing": false
   },
   {
