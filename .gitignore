@@ -1,5 +1,6 @@
 storage/
 subdomains/
+reports/
 *.log
 *.csv
 *.xlsx
