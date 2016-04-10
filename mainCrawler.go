@@ -69,7 +69,7 @@ func mainCrawler() {
 	maxPagesFlag := fs.Int("max-pages", -1, "max pages to crawl, -1 for infinite (default)")
 	//fs.String("storageType", "file", "type of storage. (http,file,ftp)")
 	storagePathFlag := fs.String("storage-path", "./storage", "folder to store crawled files")
-	reportFile := fs.String("report", "", "generate report")
+	reportFile := fs.String("report", "", "generates report. Path to xlsx-File.")
 	noCrawlFlag := fs.Bool("no-crawl", false, "skips crawling. Can be used for reporting")
 	clearStorageFlag := fs.Bool("clear-storage", false, "delete all storage files")
 	profile := fs.Bool("profile", false, "enable profiling")
@@ -366,7 +366,7 @@ func generateReport(settings *crawlSettings) {
 		row.WriteSlice(&[]string{u, textUrls[u]}, -1)
 	}
 
-	err = file.Save(settings.ReportFile + ".xlsx")
+	err = file.Save(settings.ReportFile)
 	if err != nil {
 		log.Fatal(err)
 	}
