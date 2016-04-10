@@ -25,16 +25,16 @@ func mainDNS() {
 	fs := flag.NewFlagSet("dns", flag.ExitOnError)
 
 	domain := fs.String("domain", "", "domain for dns scan")
-	subdomains := fs.String("subdomains", "", "subdomain list for bf scan")
+	wordlist := fs.String("wordlist", "", "path to wordlist for subdomain scan")
 	logFile := fs.String("output", "dnsscan.log", "")
-	resume := fs.Bool("resume", false, "resume, load logs and resume. skips alreads scanned urls")
+	resume := fs.Bool("resume", false, "resume, load logs and resume. skips already scanned urls")
 	dnsType := fs.String("typeName", "", "request type by name (A,AAAA,MX,ANY)")
 	dnsTypeNr := fs.Int("typeNumber", 1, "request type by number (1,28,15,255)")
 
 	fs.Parse(os.Args[2:])
 
 	settings := appSettings{}
-	settings.SubdomainFile = *subdomains
+	settings.SubdomainFile = *wordlist
 	settings.Domain = *domain
 	settings.LogFile = *logFile
 	settings.UseResume = *resume
