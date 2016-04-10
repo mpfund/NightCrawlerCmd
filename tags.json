@@ -26,8 +26,8 @@
       "accesskey",
       "contenteditable",
       "translate",
-      "align"
-	  "title"
+      "align",
+	    "title"
     ],
 	"AttrStartsWith":"data-",
     "AttrRegEx": "data-"

@@ -60,6 +60,9 @@ nightcrawler.exe -url http://www.google.com -report test.csv -nocrawl
 => just generate report for url
 
 */
+
+var DebugMode bool = false
+
 func mainCrawler() {
 	fs := flag.NewFlagSet("crawler", flag.ExitOnError)
 
@@ -72,7 +75,10 @@ func mainCrawler() {
 	reportFile := fs.String("report", "", "generates report. Path to xlsx-File.")
 	noCrawlFlag := fs.Bool("no-crawl", false, "skips crawling. Can be used for reporting")
 	clearStorageFlag := fs.Bool("clear-storage", false, "delete all storage files")
-	profile := fs.Bool("profile", false, "enable profiling")
+	profiling := fs.Bool("profiling", false, "enable profiling")
+	debugFlag := fs.Bool("debug", false, "enable debugging")
+
+	DebugMode = *debugFlag
 
 	fs.Parse(os.Args[2:])
 
@@ -93,7 +99,7 @@ func mainCrawler() {
 	settings.MaxPages = *maxPagesFlag
 	settings.ReportFile = *reportFile
 	settings.StorageFolder = *storagePathFlag
-	settings.Profile = *profile
+	settings.Profile = *profiling
 	settings.ProfileFolder = "./profiling/"
 
 	cw := crawlbase.NewCrawler()
@@ -105,9 +111,8 @@ func mainCrawler() {
 	}
 
 	pagesLoaded, err := cw.LoadPages(settings.StorageFolder)
-	if err != nil {
-		log.Fatal("Loaded pages  error: ", err)
-	}
+	checkError(err)
+
 	log.Println("Loaded pages: ", pagesLoaded)
 
 	var baseUrl *url.URL = nil
@@ -155,9 +160,7 @@ func exists(path string) (bool, error) {
 
 func clearStorage(settings *crawlSettings) {
 	files, err := crawlbase.GetPageInfoFiles(settings.StorageFolder)
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkError(err)
 	for _, f := range files {
 		os.Remove(f)
 	}
@@ -168,23 +171,13 @@ func writeHeap(path, num string) {
 	_, err := os.Stat(folder)
 	if err != nil {
 		err = os.Mkdir(folder, 0777)
-		if err != nil {
-			log.Fatal(err)
-		}
+		checkError(err)
 	}
 
 	f, err := os.Create(folder + "/heap_" + num + ".pprof")
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkError(err)
 	pprof.WriteHeapProfile(f)
 	f.Close()
-}
-
-func logFatal(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func logPrint(err error) {
@@ -198,12 +191,10 @@ func generateReport(settings *crawlSettings) {
 
 	file := xlsx.NewFile()
 	sheetUrls, err := file.AddSheet("Crawled Urls")
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkError(err)
 
 	files, err := crawlbase.GetPageInfoFiles(settings.StorageFolder)
-	logFatal(err)
+	checkError(err)
 
 	pageReports := map[string]*PageReport{}
 	links := map[string]bool{}
@@ -211,15 +202,13 @@ func generateReport(settings *crawlSettings) {
 
 	vdtr := htmlcheck.Validator{}
 	tags, err := crawlbase.LoadTagsFromFile("tags.json")
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkError(err)
 
 	vdtr.AddValidTags(tags)
 
 	if settings.Profile {
 		f, err := os.Create(settings.ProfileFolder + "cpuprofile.pprof")
-		logFatal(err)
+		checkError(err)
 		pprof.StartCPUProfile(f)
 		defer f.Close()
 		defer pprof.StopCPUProfile()
@@ -227,9 +216,7 @@ func generateReport(settings *crawlSettings) {
 
 	for _, k := range files {
 		page, err := crawlbase.LoadPage(k, true)
-		if err != nil {
-			log.Fatal(err)
-		}
+		checkError(err)
 
 		pr := &PageReport{}
 		pr.RespDuration = page.RespDuration
@@ -363,17 +350,11 @@ func generateReport(settings *crawlSettings) {
 
 	for _, u := range textUrlsArr {
 		row = sheetTextUrls.AddRow()
-		k := textUrls[u]
-		if k == "" {
-			k = " "
-		}
-		row.WriteSlice(&[]string{u}, -1)
+		row.WriteSlice(&[]string{u, textUrls[u]}, -1)
 	}
 
 	err = file.Save(settings.ReportFile)
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkError(err)
 
 	if settings.Profile {
 		log.Println("report generated in ", time.Now().Sub(startTime))
@@ -414,7 +395,8 @@ func saveCrawlHttp(crawledUri string, fileName string, content []byte) {
 
 	req, err := newfileUploadRequest(fileStorageUrl, params, "upload", fileName, content)
 	if err != nil {
-		log.Fatal("cant create file store request ", err)
+		log.Println("cant create file store request ")
+		checkError(err)
 	}
 
 	c := http.Client{}
