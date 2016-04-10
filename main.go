@@ -14,7 +14,7 @@ func main() {
 	}
 	if args[1] == "dns" {
 		mainDNS()
-	} else if args[1] == "cralwer" {
+	} else if args[1] == "crawler" {
 		mainCrawler()
 	} else {
 		fmt.Println("tool " + args[1] + " not found")
