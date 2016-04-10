@@ -367,7 +367,7 @@ func generateReport(settings *crawlSettings) {
 		if k == "" {
 			k = " "
 		}
-		row.WriteSlice(&[]string{u, k}, -1)
+		row.WriteSlice(&[]string{u}, -1)
 	}
 
 	err = file.Save(settings.ReportFile)
