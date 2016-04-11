@@ -104,6 +104,7 @@ func mainCrawler() {
 
 	cw := crawlbase.NewCrawler()
 	cw.WaitBetweenRequests = settings.WaitTime
+	cw.StorageFolder = settings.StorageFolder
 
 	// resume
 	if doesExists, _ := exists(settings.StorageFolder); !doesExists {
