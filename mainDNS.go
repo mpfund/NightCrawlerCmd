@@ -62,16 +62,6 @@ func mainDNS() {
 	scanDNS(&settings)
 }
 
-func checkError(e error) {
-	if e != nil && DebugMode {
-		panic(e)
-		return
-	}
-	if e != nil {
-		log.Fatal(e)
-	}
-}
-
 func readReport(settings *appSettings) {
 	_, err := os.Stat(settings.LogFile)
 	if err != nil {

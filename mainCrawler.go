@@ -126,6 +126,8 @@ func mainCrawler() {
 		settings.Url = baseUrl
 	}
 
+	// todo: add urls from link file
+
 	if baseUrl != nil && !(*noCrawlFlag) {
 		cw.BeforeCrawlFn = func(url string) (string, error) {
 			if settings.MaxPages >= 0 && cw.PageCount >= uint64(settings.MaxPages) {
