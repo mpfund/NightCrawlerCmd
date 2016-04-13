@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"io"
+	"io/ioutil"
 	"log"
 	"mime/multipart"
 	"net/http"
@@ -68,15 +69,16 @@ func mainCrawler() {
 
 	urlFlag := fs.String("url", "", "url, e.g. http://www.google.com")
 	//urlRegEx := flag.String("regex", "", "only crawl links using this regex")
-	waitFlag := fs.Int("wait", 1000, "delay, in milliseconds, default is 1000ms=1sec")
-	maxPagesFlag := fs.Int("max-pages", -1, "max pages to crawl, -1 for infinite (default)")
+	waitFlag := fs.Int("wait", 1000, "delay, in milliseconds (default is 1000ms=1sec)")
+	maxPagesFlag := fs.Int("max-pages", -1, "max pages to crawl, -1 for infinite (default is -1)")
 	//fs.String("storageType", "file", "type of storage. (http,file,ftp)")
 	storagePathFlag := fs.String("storage-path", "./storage", "folder to store crawled files")
-	reportFile := fs.String("report", "", "generates report. Path to xlsx-File.")
-	noCrawlFlag := fs.Bool("no-crawl", false, "skips crawling. Can be used for reporting")
+	reportFile := fs.String("report", "", "generates report (xlsx-File)")
+	noCrawlFlag := fs.Bool("no-crawl", false, "skips crawling. (used for reporting)")
 	clearStorageFlag := fs.Bool("clear-storage", false, "delete all storage files")
 	profiling := fs.Bool("profiling", false, "enable profiling")
 	debugFlag := fs.Bool("debug", false, "enable debugging")
+	urlList := fs.String("urllist", "", "path to list with urls")
 
 	DebugMode = *debugFlag
 
@@ -126,7 +128,21 @@ func mainCrawler() {
 		settings.Url = baseUrl
 	}
 
-	// todo: add urls from link file
+	if *urlList != "" {
+		data, err := ioutil.ReadFile(*urlList)
+		checkError(err)
+		lines := SplitByLines(string(data))
+		newUrls := []string{}
+		if baseUrl != nil {
+			for _, l := range lines {
+				absUrl := crawlbase.ToAbsUrl(baseUrl, l)
+				newUrls = append(newUrls, absUrl)
+			}
+		}
+
+		cw.AddAllLinks(newUrls)
+		cw.RemoveLinksNotSameHost(baseUrl)
+	}
 
 	if baseUrl != nil && !(*noCrawlFlag) {
 		cw.BeforeCrawlFn = func(url string) (string, error) {
