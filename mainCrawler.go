@@ -79,12 +79,13 @@ func mainCrawler() {
 	profiling := fs.Bool("profiling", false, "enable profiling")
 	debugFlag := fs.Bool("debug", false, "enable debugging")
 	urlList := fs.String("urllist", "", "path to list with urls")
+	noNewLinks := fs.Bool("no-new-links", false, "dont crawl new links.")
 
 	DebugMode = *debugFlag
 
 	fs.Parse(os.Args[2:])
 
-	if *urlFlag == "" && *reportFile == "" {
+	if *urlFlag == "" && *reportFile == "" && *urlList == "" {
 		log.Fatal("no url or report file provided.")
 	}
 
@@ -107,6 +108,7 @@ func mainCrawler() {
 	cw := crawlbase.NewCrawler()
 	cw.WaitBetweenRequests = settings.WaitTime
 	cw.StorageFolder = settings.StorageFolder
+	cw.NoNewLinks = *noNewLinks
 
 	// resume
 	if doesExists, _ := exists(settings.StorageFolder); !doesExists {
@@ -133,15 +135,25 @@ func mainCrawler() {
 		checkError(err)
 		lines := SplitByLines(string(data))
 		newUrls := []string{}
-		if baseUrl != nil {
-			for _, l := range lines {
+		for _, l := range lines {
+			if baseUrl != nil {
+				// use relative & absolute urls
 				absUrl := crawlbase.ToAbsUrl(baseUrl, l)
 				newUrls = append(newUrls, absUrl)
+			} else {
+				// add only absolute ones
+				newUrl, err := url.Parse(l)
+				checkError(err)
+				if newUrl.IsAbs() {
+					newUrls = append(newUrls, l)
+				}
 			}
 		}
 
 		cw.AddAllLinks(newUrls)
-		cw.RemoveLinksNotSameHost(baseUrl)
+		if baseUrl != nil {
+			cw.RemoveLinksNotSameHost(baseUrl)
+		}
 	}
 
 	if baseUrl != nil && !(*noCrawlFlag) {
@@ -154,6 +166,8 @@ func mainCrawler() {
 		}
 
 		cw.FetchSites(baseUrl)
+	} else if *urlList != "" && !(*noCrawlFlag) {
+		cw.FetchSites(nil)
 	}
 
 	if settings.ReportFile != "" {
