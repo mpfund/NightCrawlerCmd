@@ -79,7 +79,7 @@ func mainCrawler() {
 	profiling := fs.Bool("profiling", false, "enable profiling")
 	debugFlag := fs.Bool("debug", false, "enable debugging")
 	urlList := fs.String("urllist", "", "path to list with urls")
-	noNewLinks := fs.Bool("no-new-links", false, "dont crawl new links.")
+	noNewLinks := fs.Bool("no-new-links", false, "dont crawl hrefs links.")
 
 	DebugMode = *debugFlag
 
@@ -130,6 +130,13 @@ func mainCrawler() {
 		settings.Url = baseUrl
 	}
 
+	if *noNewLinks {
+		// set all to crawled
+		for k := range cw.Links {
+			cw.Links[k] = true
+		}
+	}
+
 	if *urlList != "" {
 		data, err := ioutil.ReadFile(*urlList)
 		checkError(err)
@@ -156,15 +163,15 @@ func mainCrawler() {
 		}
 	}
 
-	if baseUrl != nil && !(*noCrawlFlag) {
-		cw.BeforeCrawlFn = func(url string) (string, error) {
-			if settings.MaxPages >= 0 && cw.PageCount >= uint64(settings.MaxPages) {
-				log.Println("crawled ", cw.PageCount, "link(s), max pages reached.")
-				return "", errors.New("max pages reached")
-			}
-			return url, nil
+	cw.BeforeCrawlFn = func(url string) (string, error) {
+		if settings.MaxPages >= 0 && cw.PageCount >= uint64(settings.MaxPages) {
+			log.Println("crawled ", cw.PageCount, "link(s), max pages reached.")
+			return "", errors.New("max pages reached")
 		}
+		return url, nil
+	}
 
+	if baseUrl != nil && !(*noCrawlFlag) {
 		cw.FetchSites(baseUrl)
 	} else if *urlList != "" && !(*noCrawlFlag) {
 		cw.FetchSites(nil)
