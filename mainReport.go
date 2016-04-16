@@ -22,11 +22,25 @@ type reportSettings struct {
 	Profile       bool
 }
 
+type PageReport struct {
+	URL               string
+	FileName          string
+	RespDuration      int
+	StatusCode        int
+	Location          string
+	TextUrl           [][]byte
+	Error             string
+	InvalidTags       []string
+	InvalidAttributes []string
+}
+
 func mainReport() {
 	fs := flag.NewFlagSet("report", flag.ExitOnError)
 
 	storagePathFlag := fs.String("storage-path", "./storage", "folder to store crawled files")
 	reportFile := fs.String("report", "report.xlsx", "generates report (xlsx-File)")
+
+	fs.Parse(os.Args[2:])
 
 	settings := &reportSettings{}
 	settings.ProfileFolder = "./profiling/"
@@ -66,7 +80,6 @@ func filterInvalidHtmlByType(validations []*htmlcheck.ValidationError,
 			break
 		}
 	}
-
 	return errors
 }
 

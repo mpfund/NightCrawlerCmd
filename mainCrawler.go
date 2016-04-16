@@ -27,18 +27,6 @@ type crawlSettings struct {
 	StorageFolder string
 }
 
-type PageReport struct {
-	URL               string
-	FileName          string
-	RespDuration      int
-	StatusCode        int
-	Location          string
-	TextUrl           [][]byte
-	Error             string
-	InvalidTags       []string
-	InvalidAttributes []string
-}
-
 /* usage examples:
 nightcrawler.exe -url http://www.google.com
 => starts crawl from site http://www.google.com, only sites with same host (google.com)
