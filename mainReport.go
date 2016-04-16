@@ -8,6 +8,7 @@ import (
 	"runtime/pprof"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/BlackEspresso/crawlbase"
@@ -28,6 +29,7 @@ type PageReport struct {
 	RespDuration      int
 	StatusCode        int
 	Location          string
+	Words             [][]byte
 	TextUrl           [][]byte
 	Error             string
 	InvalidTags       []string
@@ -124,6 +126,7 @@ func generateReport(settings *reportSettings) {
 		pr.InvalidAttributes = []string{}
 
 		pr.TextUrl = crawlbase.GetUrlsFromText(page.ResponseBody, 100)
+		pr.Words = crawlbase.GetWordListFromText(page.ResponseBody, 500)
 		pr.Error = page.Error
 
 		if page.Response != nil {
@@ -185,11 +188,11 @@ func generateReport(settings *reportSettings) {
 	for _, info := range pageReports {
 		dur := info.RespDuration
 		row = sheetUrls.AddRow()
-		row.WriteSlice(&[]string{
+		row.WriteSlice(&[]interface{}{
 			info.FileName,
 			info.URL,
-			strconv.Itoa(info.StatusCode),
-			strconv.Itoa(dur),
+			info.StatusCode,
+			dur,
 			info.Location,
 			info.Error,
 		}, -1)
@@ -248,6 +251,24 @@ func generateReport(settings *reportSettings) {
 	for _, u := range textUrlsArr {
 		row = sheetTextUrls.AddRow()
 		row.WriteSlice(&[]string{u, textUrls[u]}, -1)
+	}
+
+	// wordlist
+	// text urls
+	words := map[string]int{}
+
+	for _, p := range pageReports {
+		for _, u := range p.Words {
+			word := strings.ToLower(string(u))
+			i := words[word]
+			words[word] = i + 1
+		}
+	}
+	sheetWordList, _ := file.AddSheet("wordlist")
+
+	for u, _ := range words {
+		row = sheetWordList.AddRow()
+		row.WriteSlice(&[]interface{}{u, words[u]}, -1)
 	}
 
 	err = file.Save(settings.ReportFile)
