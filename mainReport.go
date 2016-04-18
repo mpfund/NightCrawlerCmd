@@ -30,11 +30,13 @@ type PageReport struct {
 	RespDuration      int
 	StatusCode        int
 	Location          string
-	Words             [][]byte
-	TextUrl           [][]byte
+	Words             []string
+	TextUrls          []string
 	Error             string
 	InvalidTags       []string
 	InvalidAttributes []string
+	QueryKeys         map[string]string
+	Hrefs             map[string]bool
 }
 
 func mainReport() {
@@ -88,6 +90,85 @@ func filterInvalidHtmlByType(validations []*htmlcheck.ValidationError,
 	return errors
 }
 
+func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.TexterSettings) *PageReport {
+	page, err := crawlbase.LoadPage(file, true)
+	checkError(err)
+
+	pr := &PageReport{}
+	pr.RespDuration = page.RespDuration
+	pr.FileName = strconv.Itoa(page.CrawlTime)
+	pr.URL = page.URL
+	pr.Location = ""
+	pr.InvalidTags = []string{}
+	pr.InvalidAttributes = []string{}
+	rawUrls := crawlbase.GetUrlsFromText(page.ResponseBody, 100)
+	pr.TextUrls = bytesToStrings(rawUrls)
+	pr.Error = page.Error
+
+	if page.Response != nil {
+		pr.StatusCode = page.Response.StatusCode
+
+		mime := crawlbase.GetContentMime(page.Response.Header)
+
+		if mime == "text/html" {
+			body := string(page.ResponseBody)
+			vErros := vdtr.ValidateHtmlString(body)
+
+			invs := filterInvalidHtmlByType(vErros, htmlcheck.InvTag, 10)
+			htmlcheck.GetErrorLines(body, invs)
+			pr.InvalidTags = validationErrorToText(invs)
+
+			invs = filterInvalidHtmlByType(vErros, htmlcheck.InvAttribute, 10)
+			htmlcheck.GetErrorLines(body, invs)
+			pr.InvalidAttributes = validationErrorToText(invs)
+
+			plainText, err := html2text.Html2Text(string(page.RequestBody),
+				*h2tSettings)
+			if err != nil {
+				log.Println(err)
+			}
+			rawWords := crawlbase.GetWordListFromText([]byte(plainText), 500)
+			pr.Words = bytesToStrings(rawWords)
+		} else {
+			rawWords := crawlbase.GetWordListFromText(page.ResponseBody, 500)
+			pr.Words = bytesToStrings(rawWords)
+		}
+	}
+
+	pUrl, err := url.Parse(page.URL)
+	if err != nil {
+		log.Println("url invalid, skipping", page.URL)
+		return nil
+	}
+
+	if page.Response != nil {
+		isRedirect, location := crawlbase.LocationFromPage(page, pUrl)
+		if isRedirect {
+			pr.Location = location
+		}
+	}
+
+	pr.QueryKeys = map[string]string{}
+	for v, _ := range pUrl.Query() {
+		pr.QueryKeys[v] = page.URL
+	}
+
+	pr.Hrefs = map[string]bool{}
+	for _, href := range page.RespInfo.Hrefs {
+		pr.Hrefs[href] = true
+	}
+
+	return pr
+}
+
+func bytesToStrings(arr [][]byte) []string {
+	ret := make([]string, len(arr))
+	for _, val := range arr {
+		ret = append(ret, string(val))
+	}
+	return ret
+}
+
 func generateReport(settings *reportSettings) {
 	startTime := time.Now()
 
@@ -99,7 +180,6 @@ func generateReport(settings *reportSettings) {
 	checkError(err)
 
 	pageReports := map[string]*PageReport{}
-	links := map[string]bool{}
 	usedUrlQueryKeys := map[string]string{}
 
 	vdtr := htmlcheck.Validator{}
@@ -118,75 +198,12 @@ func generateReport(settings *reportSettings) {
 
 	conf := html2text.NewSettings()
 
-	for _, k := range files {
-		page, err := crawlbase.LoadPage(k, true)
-		checkError(err)
-
-		pr := &PageReport{}
-		pr.RespDuration = page.RespDuration
-		pr.FileName = strconv.Itoa(page.CrawlTime)
-		pr.URL = page.URL
-		pr.Location = ""
-		pr.InvalidTags = []string{}
-		pr.InvalidAttributes = []string{}
-
-		pr.TextUrl = crawlbase.GetUrlsFromText(page.ResponseBody, 100)
-		pr.Error = page.Error
-
-		if page.Response != nil {
-			pr.StatusCode = page.Response.StatusCode
-
-			mime := crawlbase.GetContentMime(page.Response.Header)
-
-			if mime == "text/html" {
-				body := string(page.ResponseBody)
-				vErros := vdtr.ValidateHtmlString(body)
-
-				invs := filterInvalidHtmlByType(vErros, htmlcheck.InvTag, 10)
-				htmlcheck.GetErrorLines(body, invs)
-				pr.InvalidTags = validationErrorToText(invs)
-
-				invs = filterInvalidHtmlByType(vErros, htmlcheck.InvAttribute, 10)
-				htmlcheck.GetErrorLines(body, invs)
-				pr.InvalidAttributes = validationErrorToText(invs)
-
-				plainText, err := html2text.Html2Text(string(page.RequestBody), conf)
-				if err != nil {
-					log.Println(err)
-				}
-				pr.Words = crawlbase.GetWordListFromText([]byte(plainText), 500)
-			} else {
-				pr.Words = crawlbase.GetWordListFromText(page.ResponseBody, 500)
-			}
+	for _, file := range files {
+		pr := loadPage(file, &vdtr, &conf)
+		pageReports[pr.URL] = pr
+		for _, querykey := range pr.QueryKeys {
+			usedUrlQueryKeys[querykey] = pr.URL
 		}
-
-		pUrl, err := url.Parse(page.URL)
-		if err != nil {
-			log.Println("url invalid, skipping", page.URL)
-			continue
-		}
-
-		if page.Response != nil {
-			isRedirect, location := crawlbase.LocationFromPage(page, pUrl)
-			if isRedirect {
-				pr.Location = location
-			}
-		}
-
-		for v, _ := range pUrl.Query() {
-			usedUrlQueryKeys[v] = pUrl.String()
-		}
-
-		pageReports[page.URL] = pr
-		for _, href := range page.RespInfo.Hrefs {
-			_, hasUrl := pageReports[href]
-			if !hasUrl {
-				links[href] = false
-			}
-		}
-
-		// free page body
-		page.ResponseBody = []byte{}
 	}
 
 	if settings.Profile {
@@ -240,8 +257,8 @@ func generateReport(settings *reportSettings) {
 	textUrls := map[string]string{}
 
 	for _, p := range pageReports {
-		for _, u := range p.TextUrl {
-			textUrls[string(u)] = p.URL
+		for _, u := range p.TextUrls {
+			textUrls[u] = p.URL
 		}
 	}
 
