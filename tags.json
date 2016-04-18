@@ -18,6 +18,8 @@
       "aria-expanded",
       "aria-dropeffect",
       "aria-controls",
+      "aria-labelledby",
+      "aria-describedby",
       "tabindex",
       "onmousedown",
       "onmouseup",
@@ -27,7 +29,7 @@
       "contenteditable",
       "translate",
       "align",
-	    "title"
+	  "title"
     ],
 	"AttrStartsWith":"data-",
     "AttrRegEx": "data-"
@@ -67,6 +69,46 @@
     "IsSelfClosing": false
   },
   {
+    "Name": "data",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "rect",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "circle",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "ellipse",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "line",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "polyline",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "polygon",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "path",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
     "Name": "header",
     "Attrs": [ ],
     "IsSelfClosing": false
@@ -83,7 +125,22 @@
   },
   {
     "Name": "select",
-    "Attrs": [ "name" ],
+    "Attrs": [ "name","size","required" ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "colgroup",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "video",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "source",
+    "Attrs": [ ],
     "IsSelfClosing": false
   },
   {
@@ -143,7 +200,7 @@
   },
   {
     "Name": "input",
-    "Attrs": [ "class", "maxlength", "name", "placeholder", "required", "size", "type", "value", "alt", "src", "autocomplete", "tabindex", "checked", "disabled", "onclick", "style", "title", "aria-autocomplete", "spellcheck", "autofocus","max","readonly"],
+    "Attrs": [ "class", "maxlength", "name", "min" , "placeholder", "required", "size", "type", "value", "alt", "src", "autocomplete", "tabindex", "checked", "disabled", "onclick", "style", "title", "aria-autocomplete", "spellcheck", "autofocus","max","readonly"],
     "IsSelfClosing": true
   },
   {
@@ -371,12 +428,12 @@
   },
   {
     "Name": "ol",
-    "Attrs": [ "class" ],
+    "Attrs": [ "reversed","start","type" ],
     "IsSelfClosing": false
   },
   {
     "Name": "ul",
-    "Attrs": [ "class", "role", "aria-label" ],
+    "Attrs": [ ],
     "IsSelfClosing": false
   },
   {
@@ -421,7 +478,7 @@
   },
   {
     "Name": "th",
-    "Attrs": [ "align", "colspan" ],
+    "Attrs": [ "align", "colspan","scope","headers","sorted","rowspan" ,"abbr" ],
     "IsSelfClosing": false
   },
   {

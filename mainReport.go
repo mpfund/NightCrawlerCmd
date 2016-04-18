@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/BlackEspresso/crawlbase"
+	"github.com/BlackEspresso/html2text"
 	"github.com/BlackEspresso/htmlcheck"
 	"github.com/tealeg/xlsx"
 )
@@ -41,6 +42,7 @@ func mainReport() {
 
 	storagePathFlag := fs.String("storage-path", "./storage", "folder to store crawled files")
 	reportFile := fs.String("report", "report.xlsx", "generates report (xlsx-File)")
+	profile := fs.Bool("profile", false, "enable profiling")
 
 	fs.Parse(os.Args[2:])
 
@@ -48,6 +50,7 @@ func mainReport() {
 	settings.ProfileFolder = "./profiling/"
 	settings.ReportFile = *reportFile
 	settings.StoragePath = *storagePathFlag
+	settings.Profile = *profile
 
 	if *reportFile == "" {
 		log.Println("missing report file")
@@ -113,6 +116,8 @@ func generateReport(settings *reportSettings) {
 		defer pprof.StopCPUProfile()
 	}
 
+	conf := html2text.NewSettings()
+
 	for _, k := range files {
 		page, err := crawlbase.LoadPage(k, true)
 		checkError(err)
@@ -126,7 +131,6 @@ func generateReport(settings *reportSettings) {
 		pr.InvalidAttributes = []string{}
 
 		pr.TextUrl = crawlbase.GetUrlsFromText(page.ResponseBody, 100)
-		pr.Words = crawlbase.GetWordListFromText(page.ResponseBody, 500)
 		pr.Error = page.Error
 
 		if page.Response != nil {
@@ -145,6 +149,14 @@ func generateReport(settings *reportSettings) {
 				invs = filterInvalidHtmlByType(vErros, htmlcheck.InvAttribute, 10)
 				htmlcheck.GetErrorLines(body, invs)
 				pr.InvalidAttributes = validationErrorToText(invs)
+
+				plainText, err := html2text.Html2Text(string(page.RequestBody), conf)
+				if err != nil {
+					log.Println(err)
+				}
+				pr.Words = crawlbase.GetWordListFromText([]byte(plainText), 500)
+			} else {
+				pr.Words = crawlbase.GetWordListFromText(page.ResponseBody, 500)
 			}
 		}
 
