@@ -35,7 +35,7 @@ type PageReport struct {
 	Error             string
 	InvalidTags       []string
 	InvalidAttributes []string
-	QueryKeys         map[string]string
+	QueryKeys         map[string]bool
 	Hrefs             map[string]bool
 }
 
@@ -121,7 +121,6 @@ func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.Tex
 			invs = filterInvalidHtmlByType(vErros, htmlcheck.InvAttribute, 10)
 			htmlcheck.GetErrorLines(body, invs)
 			pr.InvalidAttributes = validationErrorToText(invs)
-
 			plainText, err := html2text.Html2Text(string(page.RequestBody),
 				*h2tSettings)
 			if err != nil {
@@ -130,7 +129,7 @@ func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.Tex
 			rawWords := crawlbase.GetWordListFromText([]byte(plainText), 500)
 			pr.Words = bytesToStrings(rawWords)
 		} else {
-			rawWords := crawlbase.GetWordListFromText(page.ResponseBody, 500)
+			rawWords := crawlbase.GetWordListFromText(page.ResponseBody, 2000)
 			pr.Words = bytesToStrings(rawWords)
 		}
 	}
@@ -148,13 +147,16 @@ func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.Tex
 		}
 	}
 
-	pr.QueryKeys = map[string]string{}
+	pr.QueryKeys = map[string]bool{}
 	for v, _ := range pUrl.Query() {
-		pr.QueryKeys[v] = page.URL
+		pr.QueryKeys[v] = true
 	}
 
 	pr.Hrefs = map[string]bool{}
 	for _, href := range page.RespInfo.Hrefs {
+		if href == "" {
+			continue
+		}
 		pr.Hrefs[href] = true
 	}
 
@@ -201,8 +203,8 @@ func generateReport(settings *reportSettings) {
 	for _, file := range files {
 		pr := loadPage(file, &vdtr, &conf)
 		pageReports[pr.URL] = pr
-		for _, querykey := range pr.QueryKeys {
-			usedUrlQueryKeys[querykey] = pr.URL
+		for url, _ := range pr.QueryKeys {
+			usedUrlQueryKeys[url] = pr.URL
 		}
 	}
 
@@ -212,7 +214,8 @@ func generateReport(settings *reportSettings) {
 	}
 
 	row := sheetUrls.AddRow()
-	row.WriteSlice(&[]string{"timestamp", "url", "Http code", "duration (ms)", "redirect url", "error"}, -1)
+	row.WriteSlice(&[]string{"timestamp", "url", "Http code", "duration (ms)",
+		"redirect url", "error"}, -1)
 
 	for _, info := range pageReports {
 		dur := info.RespDuration
@@ -258,6 +261,9 @@ func generateReport(settings *reportSettings) {
 
 	for _, p := range pageReports {
 		for _, u := range p.TextUrls {
+			if u == "" {
+				continue
+			}
 			textUrls[u] = p.URL
 		}
 	}
@@ -288,6 +294,9 @@ func generateReport(settings *reportSettings) {
 
 	for _, p := range pageReports {
 		for _, u := range p.Words {
+			if u == "" {
+				continue
+			}
 			word := strings.ToLower(string(u))
 			i := words[word]
 			words[word] = i + 1
