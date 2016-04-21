@@ -70,6 +70,11 @@
     "IsSelfClosing": false
   },
   {
+    "Name": "caption",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
     "Name": "data",
     "Attrs": [ ],
     "IsSelfClosing": false
@@ -482,7 +487,7 @@
   },
   {
     "Name": "table",
-    "Attrs": [ "align", "cellspacing", "class", "width", "height", "border", "cellpadding" ],
+    "Attrs": [ "align", "cellspacing","cellpadding","frame", "rules","class", "width", "border", "cellpadding", "summary" ],
     "IsSelfClosing": false
   },
   {
