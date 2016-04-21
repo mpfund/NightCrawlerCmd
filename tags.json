@@ -80,6 +80,11 @@
     "IsSelfClosing": false
   },
   {
+    "Name": "var",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
     "Name": "rect",
     "Attrs": [ ],
     "IsSelfClosing": false
