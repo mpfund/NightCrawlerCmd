@@ -37,6 +37,12 @@ type PageReport struct {
 	InvalidAttributes []string
 	QueryKeys         map[string]bool
 	Hrefs             map[string]bool
+	Forms             []crawlbase.Form
+}
+
+type WordInfo struct {
+	Count int
+	Page  string
 }
 
 func mainReport() {
@@ -44,7 +50,7 @@ func mainReport() {
 
 	storagePathFlag := fs.String("storage-path", "./storage", "folder to store crawled files")
 	reportFile := fs.String("report", "report.xlsx", "generates report (xlsx-File)")
-	profile := fs.Bool("profile", false, "enable profiling")
+	profiling := fs.Bool("profiling", false, "enable profiling")
 
 	fs.Parse(os.Args[2:])
 
@@ -52,7 +58,7 @@ func mainReport() {
 	settings.ProfileFolder = "./profiling/"
 	settings.ReportFile = *reportFile
 	settings.StoragePath = *storagePathFlag
-	settings.Profile = *profile
+	settings.Profile = *profiling
 
 	if *reportFile == "" {
 		log.Println("missing report file")
@@ -109,7 +115,6 @@ func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.Tex
 		pr.StatusCode = page.Response.StatusCode
 
 		mime := crawlbase.GetContentMime(page.Response.Header)
-
 		if mime == "text/html" {
 			body := string(page.ResponseBody)
 			vErros := vdtr.ValidateHtmlString(body)
@@ -121,17 +126,17 @@ func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.Tex
 			invs = filterInvalidHtmlByType(vErros, htmlcheck.InvAttribute, 10)
 			htmlcheck.GetErrorLines(body, invs)
 			pr.InvalidAttributes = validationErrorToText(invs)
-			plainText, err := html2text.Html2Text(string(page.RequestBody),
-				*h2tSettings)
+			plainText, err := html2text.Html2Text(body, *h2tSettings)
 			if err != nil {
 				log.Println(err)
 			}
-			rawWords := crawlbase.GetWordListFromText([]byte(plainText), 500)
-			pr.Words = bytesToStrings(rawWords)
-		} else {
-			rawWords := crawlbase.GetWordListFromText(page.ResponseBody, 2000)
+			rawWords := crawlbase.GetWordListFromText([]byte(plainText), 2000)
 			pr.Words = bytesToStrings(rawWords)
 		}
+		/* else {
+			rawWords := crawlbase.GetWordListFromText(page.ResponseBody, 2000)
+			pr.Words = bytesToStrings(rawWords)
+		}*/
 	}
 
 	pUrl, err := url.Parse(page.URL)
@@ -159,6 +164,7 @@ func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.Tex
 		}
 		pr.Hrefs[href] = true
 	}
+	pr.Forms = page.RespInfo.Forms
 
 	return pr
 }
@@ -290,7 +296,7 @@ func generateReport(settings *reportSettings) {
 
 	// wordlist
 	// text urls
-	words := map[string]int{}
+	words := map[string]*WordInfo{}
 
 	for _, p := range pageReports {
 		for _, u := range p.Words {
@@ -298,15 +304,34 @@ func generateReport(settings *reportSettings) {
 				continue
 			}
 			word := strings.ToLower(string(u))
-			i := words[word]
-			words[word] = i + 1
+			w, ok := words[word]
+			if !ok {
+				words[word] = &WordInfo{1, p.URL}
+			} else {
+				w.Count += 1
+			}
+
 		}
 	}
 	sheetWordList, _ := file.AddSheet("wordlist")
 
 	for u, _ := range words {
 		row = sheetWordList.AddRow()
-		row.WriteSlice(&[]interface{}{u, words[u]}, -1)
+		row.WriteSlice(&[]interface{}{u, words[u].Count, words[u].Page}, -1)
+	}
+
+	// form urls
+	sheetFromUrls, _ := file.AddSheet("form urls")
+
+	for pageUrl, cPage := range pageReports {
+		for _, form := range cPage.Forms {
+			row = sheetFromUrls.AddRow()
+			row.WriteSlice(&[]interface{}{pageUrl, form.Url, form.Method}, -1)
+			for _, input := range form.Inputs {
+				row = sheetFromUrls.AddRow()
+				row.WriteSlice(&[]interface{}{"", input.Name, input.Type, input.Value}, -1)
+			}
+		}
 	}
 
 	err = file.Save(settings.ReportFile)
