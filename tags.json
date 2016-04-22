@@ -86,17 +86,22 @@
   },
   {
     "Name": "rect",
-    "Attrs": [ ],
+    "Attrs": [ "width","height","x","y","rx","ry","transform","fill" ],
     "IsSelfClosing": false
   },
   {
     "Name": "circle",
-    "Attrs": [ ],
+    "Attrs": [ "cx","cy", "r" ],
+    "IsSelfClosing": false
+  },
+   {
+    "Name": "clippath",
+    "Attrs": [  ],
     "IsSelfClosing": false
   },
   {
     "Name": "ellipse",
-    "Attrs": [ ],
+    "Attrs": [ "cx","cy" ],
     "IsSelfClosing": false
   },
   {
@@ -106,12 +111,12 @@
   },
   {
     "Name": "polyline",
-    "Attrs": [ ],
+    "Attrs": [ "points","fill","fill-rule" ],
     "IsSelfClosing": false
   },
   {
     "Name": "polygon",
-    "Attrs": [ ],
+    "Attrs": [ "points","fill","fill-rule" ],
     "IsSelfClosing": false
   },
   {
@@ -151,12 +156,12 @@
   },
   {
     "Name": "video",
-    "Attrs": [ ],
+    "Attrs": [ "autoplay","controls","height","width","loop","muted","poster","preload","src" ],
     "IsSelfClosing": false
   },
   {
     "Name": "source",
-    "Attrs": [ ],
+    "Attrs": [ "src","type" ],
     "IsSelfClosing": false
   },
   {
@@ -216,18 +221,28 @@
   },
   {
     "Name": "base",
-    "Attrs": [ "href" ],
+    "Attrs": [ "href","target" ],
     "IsSelfClosing": true
   },
   {
-    "Name": "input",
-    "Attrs": [ "class", "maxlength", "name", "min" , "placeholder", "required", "size", "type", "value", "alt", "src", "autocomplete", "tabindex", "checked", "disabled", "onclick", "style", "title", "aria-autocomplete", "spellcheck", "autofocus","max","readonly","autocorrect"],
-    "IsSelfClosing": true
+    "Name": "frameset",
+    "Attrs": [ "cols" ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "noframes",
+    "Attrs": [ ],
+    "IsSelfClosing": false
   },
   {
     "Name": "iframe",
     "Attrs": [ "height", "frameborder", "scrolling", "name", "src", "height", "width", "allowfullscreen" ],
     "IsSelfClosing": false
+  },
+  {
+    "Name": "input",
+    "Attrs": [ "class", "maxlength", "name", "min","step", "placeholder", "required", "size", "type", "value", "alt", "src", "autocomplete", "tabindex", "checked", "disabled", "onclick", "style", "title", "aria-autocomplete", "spellcheck", "autofocus","max","readonly","autocorrect"],
+    "IsSelfClosing": true
   },
   {
     "Name": "noscript",
@@ -250,8 +265,13 @@
     "IsSelfClosing": false
   },
   {
+    "Name": "sub",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
     "Name": "option",
-    "Attrs": [ "selected", "value" ],
+    "Attrs": [ "selected", "value","name" ],
     "IsSelfClosing": false
   },
   {
@@ -314,7 +334,7 @@
   },
   {
     "Name": "svg",
-    "Attrs": [ "viewbox", "xmlns", "preserveaspectratio","width","height" ],
+    "Attrs": [ "viewbox", "xmlns", "preserveaspectratio","width","height","version" ],
     "IsSelfClosing": false
   },
   {
@@ -467,7 +487,7 @@
   },
   {
     "Name": "li",
-    "Attrs": [ "title" ],
+    "Attrs": [ "type","value" ],
     "IsSelfClosing": true
   },
   {
