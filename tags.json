@@ -485,6 +485,26 @@
     "Attrs": [ ],
     "IsSelfClosing": false
   },
+   {
+    "Name": "image",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "g",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+   {
+    "Name": "use",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "main",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
   {
     "Name": "blockquote",
     "Attrs": [ ],
