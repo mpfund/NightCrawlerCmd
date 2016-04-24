@@ -86,12 +86,13 @@
   },
   {
     "Name": "rect",
-    "Attrs": [ "width","height","x","y","rx","ry","transform","fill","fill-rule" ],
+    "Attrs": [ "width","height","x","y","rx","ry","opacity","transform","fill","fill-rule","clip-rule" ],
     "IsSelfClosing": false
   },
   {
     "Name": "circle",
-    "Attrs": [ "cx","cy", "r","fill","fill-rule" ],
+    "Attrs": [ "cx","cy", "r","fill","fill-rule","clip-path","stroke",
+    "stroke-width","stroke-miterlimit","stroke-linecap"],
     "IsSelfClosing": false
   },
    {
@@ -101,12 +102,13 @@
   },
   {
     "Name": "ellipse",
-    "Attrs": [ "cx","cy","rx","ry","fill", "fill-rule","transform" ],
+    "Attrs": [ "cx","cy","rx","ry","fill", "fill-rule","transform","opacity" ],
     "IsSelfClosing": false
   },
   {
     "Name": "line",
-    "Attrs": [ ],
+    "Attrs": [ "fill","opacity","stroke","x1","y1","x2","y2",
+    "stroke-width","stroke-linecap","stroke-miterlimit","stroke-linejoin"],
     "IsSelfClosing": false
   },
     {
@@ -116,12 +118,12 @@
   },
   {
     "Name": "polyline",
-    "Attrs": [ "points","fill","fill-rule" ],
+    "Attrs": [ "points","fill","fill-rule","stroke" ],
     "IsSelfClosing": false
   },
   {
     "Name": "polygon",
-    "Attrs": [ "points","fill","fill-rule" ],
+    "Attrs": [ "points","fill","fill-rule","clip-rule","clip-path","opacity" ],
     "IsSelfClosing": false
   },
   {
@@ -131,6 +133,11 @@
   },
   {
     "Name": "header",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+   {
+    "Name": "big",
     "Attrs": [ ],
     "IsSelfClosing": false
   },
@@ -236,7 +243,7 @@
   },
    {
     "Name": "frame",
-    "Attrs": [ ],
+    "Attrs": [ "src" ,"name","scrolling"],
     "IsSelfClosing": false
   },
   {
@@ -354,7 +361,7 @@
   },
   {
     "Name": "path",
-    "Attrs": [ "fill", "fill-rule", "clip-rule", "d" ],
+    "Attrs": [ "fill", "fill-rule", "clip-rule","opacity","clip-path", "d" ],
     "IsSelfClosing": false
   },
   {
@@ -407,12 +414,23 @@
   },
   {
     "Name": "link",
-    "Attrs": [ "href", "media", "sizes", "title", "type", "rel", "content", "hreflang", "itemprop" ],
+    "Attrs": [ "href", "media", "sizes", "title", "type", "rel",
+    "content", "hreflang", "itemprop","alt" ],
     "IsSelfClosing": true
   },
   {
     "Name": "title",
     "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "lineargradient",
+    "Attrs": [ "gradientunits","x1","x2","y1","y2" ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "stop",
+    "Attrs": [ "offset","stop-color" ],
     "IsSelfClosing": false
   },
   {
@@ -527,12 +545,12 @@
   },
   {
     "Name": "g",
-    "Attrs": [ ],
+    "Attrs": [ "clip-path","opacity","transform" ,"fill","display","enable-background"],
     "IsSelfClosing": false
   },
    {
     "Name": "use",
-    "Attrs": [ "xlink:href" ],
+    "Attrs": [ "xlink:href","overflow","fill" ],
     "IsSelfClosing": false
   },
   {
@@ -592,7 +610,7 @@
   },
   {
     "Name": "canvas",
-    "Attrs": [ ],
+    "Attrs": ["height","width" ],
     "IsSelfClosing": false
   }
 ]
