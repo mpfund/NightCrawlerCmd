@@ -1,4 +1,10 @@
-[
+{
+	"Groups":[{
+		"Name":"SVG",
+		"Attrs":["accent-height","accumulate","additive","alignment-baseline","allowReorder","alphabetic","amplitude","arabic-form","ascent","attributeName","attributeType","autoReverse","azimuth","baseFrequency","baseline-shift","baseProfile","bbox","begin","bias","by","calcMode","cap-height","class","clip","clipPathUnits","clip-path","clip-rule","color","color-interpolation","color-interpolation-filters","color-profile","color-rendering","contentScriptType","contentStyleType","cursor","cx","cy","d","decelerate","descent","diffuseConstant","direction","display","divisor","dominant-baseline","dur","dx","dy","edgeMode","elevation","enable-background","end","exponent","externalResourcesRequired","fill","fill-opacity","fill-rule","filter","filterRes","filterUnits","flood-color","flood-opacity","font-family","font-size","font-size-adjust","font-stretch","font-style","font-variant","font-weight","format","from","fx","fy","g1","g2","glyph-name","glyph-orientation-horizontal","glyph-orientation-vertical","glyphRef","gradientTransform","gradientUnits","hanging","height","horiz-adv-x","horiz-origin-x","id","ideographic","image-rendering","in","in2","intercept","k","k1","k2","k3","k4","kernelMatrix","kernelUnitLength","kerning","keyPoints","keySplines","keyTimes","lang","lengthAdjust","letter-spacing","lighting-color","limitingConeAngle","local","marker-end","marker-mid","marker-start","markerHeight","markerUnits","markerWidth","mask","maskContentUnits","maskUnits","mathematical","max","media","method","min","mode","name","numOctaves","offset","onabort","onactivate","onbegin","onclick","onend","onerror","onfocusin","onfocusout","onload","onmousedown","onmousemove","onmouseout","onmouseover","onmouseup","onrepeat","onresize","onscroll","onunload","onzoom","opacity","operator","order","orient","orientation","origin","overflow","overline-position","overline-thickness","panose-1","paint-order","pathLength","patternContentUnits","patternTransform","patternUnits","pointer-events","points","pointsAtX","pointsAtY","pointsAtZ","preserveAlpha","preserveAspectRatio","primitiveUnits","r","radius","refX","refY","rendering-intent","repeatCount","repeatDur","requiredExtensions","requiredFeatures","restart","result","rotate","rx","ry","scale","seed","shape-rendering","slope","spacing","specularConstant","specularExponent","speed","spreadMethod","startOffset","stdDeviation","stemh","stemv","stitchTiles","stop-color","stop-opacity","strikethrough-position","strikethrough-thickness","string","stroke","stroke-dasharray","stroke-dashoffset","stroke-linecap","stroke-linejoin","stroke-miterlimit","stroke-opacity","stroke-width","style","surfaceScale","systemLanguage","tableValues","target","targetX","targetY","text-anchor","text-decoration","text-rendering","textLength","to","transform","type","u1","u2","underline-position","underline-thickness","unicode","unicode-bidi","unicode-range","units-per-em","v-alphabetic","v-hanging","v-ideographic","v-mathematical","values","version","vert-adv-y","vert-origin-x","vert-origin-y","viewBox","viewTarget","visibility","width","widths","word-spacing","writing-mode","x","x-height","x1","x2","xChannelSelector","xlink:actuate","xlink:arcrole","xlink:href","xlink:role","xlink:show","xlink:title","xlink:type","xml:base","xml:lang","xml:space","y","y1","y2","yChannelSelector","z","zoomAndPanaccent-height","accumulate","additive","alignment-baseline","allowReorder","alphabetic","amplitude","arabic-form","ascent","attributeName","attributeType","autoReverse","azimuth","baseFrequency","baseline-shift","baseProfile","bbox","begin","bias","by","calcMode","cap-height","class","clip","clipPathUnits","clip-path","clip-rule","color","color-interpolation","color-interpolation-filters","color-profile","color-rendering","contentScriptType","contentStyleType","cursor","cx","cy","d","decelerate","descent","diffuseConstant","direction","display","divisor","dominant-baseline","dur","dx","dy","edgeMode","elevation","enable-background","end","exponent","externalResourcesRequired","fill","fill-opacity","fill-rule","filter","filterRes","filterUnits","flood-color","flood-opacity","font-family","font-size","font-size-adjust","font-stretch","font-style","font-variant","font-weight","format","from","fx","fy","g1","g2","glyph-name","glyph-orientation-horizontal","glyph-orientation-vertical","glyphRef","gradientTransform","gradientUnits","hanging","height","horiz-adv-x","horiz-origin-x","id","ideographic","image-rendering","in","in2","intercept","k","k1","k2","k3","k4","kernelMatrix","kernelUnitLength","kerning","keyPoints","keySplines","keyTimes","lang","lengthAdjust","letter-spacing","lighting-color","limitingConeAngle","local","marker-end","marker-mid","marker-start","markerHeight","markerUnits","markerWidth","mask","maskContentUnits","maskUnits","mathematical","max","media","method","min","mode","name","numOctaves","offset","onabort","onactivate","onbegin","onclick","onend","onerror","onfocusin","onfocusout","onload","onmousedown","onmousemove","onmouseout","onmouseover","onmouseup","onrepeat","onresize","onscroll","onunload","onzoom","opacity","operator","order","orient","orientation","origin","overflow","overline-position","overline-thickness","panose-1","paint-order","pathLength","patternContentUnits","patternTransform","patternUnits","pointer-events","points","pointsAtX","pointsAtY","pointsAtZ","preserveAlpha","preserveAspectRatio","primitiveUnits","r","radius","refX","refY","rendering-intent","repeatCount","repeatDur","requiredExtensions","requiredFeatures","restart","result","rotate","rx","ry","scale","seed","shape-rendering","slope","spacing","specularConstant","specularExponent","speed","spreadMethod","startOffset","stdDeviation","stemh","stemv","stitchTiles","stop-color","stop-opacity","strikethrough-position","strikethrough-thickness","string","stroke","stroke-dasharray","stroke-dashoffset","stroke-linecap","stroke-linejoin","stroke-miterlimit","stroke-opacity","stroke-width","style","surfaceScale","systemLanguage","tableValues","target","targetX","targetY","text-anchor","text-decoration","text-rendering","textLength","to","transform","type","u1","u2","underline-position","underline-thickness","unicode","unicode-bidi","unicode-range","units-per-em","v-alphabetic","v-hanging","v-ideographic","v-mathematical","values","version","vert-adv-y","vert-origin-x","vert-origin-y","viewBox","viewTarget","visibility","width","widths","word-spacing","writing-mode","x","x-height","x1","x2","xChannelSelector","xlink:actuate","xlink:arcrole","xlink:href","xlink:role","xlink:show","xlink:title","xlink:type","xml:base","xml:lang","xml:space","y","y1","y2","yChannelSelector","z","zoomAndPan"]
+		}],
+
+	"Tags": [
   {
     "Name": "!DOCTYPE",
     "Attrs": [ ],
@@ -29,7 +35,11 @@
       "contenteditable",
       "translate",
       "align",
-	  "title"
+	  "title",
+	  "itemprop",
+	  "itemscope",
+	  "itemtype",
+	  "prefix"
     ],
 	"AttrStartsWith":"data-",
     "AttrRegEx": "data-"
@@ -55,7 +65,8 @@
       "onclick",
       "role",
       "data-toggle",
-	  "referrerpolicy"
+	  "referrerpolicy",
+	  "aria-selected"
     ],
     "IsSelfClosing": false
   },
@@ -86,13 +97,14 @@
   },
   {
     "Name": "rect",
-    "Attrs": [ "width","height","x","y","rx","ry","opacity","transform","fill","fill-rule","clip-rule" ],
+    "Groups":["SVG"],
+    "Attrs": [ "width","height","x","y","rx","ry" ],
     "IsSelfClosing": false
   },
   {
     "Name": "circle",
-    "Attrs": [ "cx","cy", "r","fill","fill-rule","clip-path","stroke",
-    "stroke-width","stroke-miterlimit","stroke-linecap"],
+    "Groups":["SVG"],
+    "Attrs": [ "cx","cy", "r"],
     "IsSelfClosing": false
   },
    {
@@ -176,18 +188,18 @@
     "Attrs": [ "src","type" ],
     "IsSelfClosing": false
   },
-  {
-    "Name": "iframe",
-    "Attrs": [ "name", "allowtransparency" ],
-    "IsSelfClosing": false
-  },
    {
     "Name": "cite",
     "Attrs": [  ],
     "IsSelfClosing": false
   },
-{
+  {
     "Name": "abbr",
+    "Attrs": [  ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "hgroup",
     "Attrs": [  ],
     "IsSelfClosing": false
   },
@@ -253,7 +265,7 @@
   },
   {
     "Name": "iframe",
-    "Attrs": [ "height", "frameborder", "scrolling", "name", "src", "height", "width", "allowfullscreen" ],
+    "Attrs": [ "height", "frameborder", "scrolling", "name", "src", "height", "width", "allowfullscreen","webkitallowfullscreen","mozallowfullscreen" ],
     "IsSelfClosing": false
   },
   {
@@ -540,12 +552,14 @@
   },
    {
     "Name": "image",
-    "Attrs": [ ],
+    "Groups":["SVG"],
+    "Attrs": [ "x","y","width","heigth","xlink:href","preserveAspectRatio" ],
     "IsSelfClosing": false
   },
   {
     "Name": "g",
-    "Attrs": [ "clip-path","opacity","transform" ,"fill","display","enable-background"],
+    "Groups":["SVG"],
+    "Attrs": [ ],
     "IsSelfClosing": false
   },
    {
@@ -614,3 +628,6 @@
     "IsSelfClosing": false
   }
 ]
+
+}
+

@@ -22,6 +22,7 @@ type reportSettings struct {
 	StoragePath   string
 	ProfileFolder string
 	Profile       bool
+	WordList      bool
 }
 
 type PageReport struct {
@@ -51,6 +52,7 @@ func mainReport() {
 	storagePathFlag := fs.String("storage-path", "./storage", "folder to store crawled files")
 	reportFile := fs.String("report", "report.xlsx", "generates report (xlsx-File)")
 	profiling := fs.Bool("profiling", false, "enable profiling")
+	wordlist := fs.Bool("wordlist", false, "enable wordlist")
 
 	fs.Parse(os.Args[2:])
 
@@ -59,6 +61,7 @@ func mainReport() {
 	settings.ReportFile = *reportFile
 	settings.StoragePath = *storagePathFlag
 	settings.Profile = *profiling
+	settings.WordList = *wordlist
 
 	if *reportFile == "" {
 		log.Println("missing report file")
@@ -96,7 +99,7 @@ func filterInvalidHtmlByType(validations []*htmlcheck.ValidationError,
 	return errors
 }
 
-func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.TexterSettings) *PageReport {
+func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.TexterSettings, doWordlist bool) *PageReport {
 	page, err := crawlbase.LoadPage(file, true)
 	checkError(err)
 
@@ -107,8 +110,10 @@ func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.Tex
 	pr.Location = ""
 	pr.InvalidTags = []string{}
 	pr.InvalidAttributes = []string{}
-	rawUrls := crawlbase.GetUrlsFromText(page.ResponseBody, 100)
-	pr.TextUrls = bytesToStrings(rawUrls)
+	if doWordlist {
+		rawUrls := crawlbase.GetUrlsFromText(page.ResponseBody, 100)
+		pr.TextUrls = bytesToStrings(rawUrls)
+	}
 	pr.Error = page.Error
 
 	if page.Response != nil {
@@ -126,12 +131,15 @@ func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.Tex
 			invs = filterInvalidHtmlByType(vErros, htmlcheck.InvAttribute, 10)
 			htmlcheck.GetErrorLines(body, invs)
 			pr.InvalidAttributes = validationErrorToText(invs)
-			plainText, err := html2text.Html2Text(body, *h2tSettings)
-			if err != nil {
-				log.Println(err)
+
+			if doWordlist {
+				plainText, err := html2text.Html2Text(body, *h2tSettings)
+				if err != nil {
+					log.Println(err)
+				}
+				rawWords := crawlbase.GetWordListFromText([]byte(plainText), 2000)
+				pr.Words = bytesToStrings(rawWords)
 			}
-			rawWords := crawlbase.GetWordListFromText([]byte(plainText), 2000)
-			pr.Words = bytesToStrings(rawWords)
 		}
 		/* else {
 			rawWords := crawlbase.GetWordListFromText(page.ResponseBody, 2000)
@@ -191,10 +199,8 @@ func generateReport(settings *reportSettings) {
 	usedUrlQueryKeys := map[string]string{}
 
 	vdtr := htmlcheck.Validator{}
-	tags, err := crawlbase.LoadTagsFromFile("tags.json")
+	err = vdtr.LoadTagsFromFile("tags.json")
 	checkError(err)
-
-	vdtr.AddValidTags(tags)
 
 	if settings.Profile {
 		f, err := os.Create(settings.ProfileFolder + "cpuprofile.pprof")
@@ -207,7 +213,7 @@ func generateReport(settings *reportSettings) {
 	conf := html2text.NewSettings()
 
 	for _, file := range files {
-		pr := loadPage(file, &vdtr, &conf)
+		pr := loadPage(file, &vdtr, &conf, settings.WordList)
 		pageReports[pr.URL] = pr
 		for url, _ := range pr.QueryKeys {
 			usedUrlQueryKeys[url] = pr.URL
