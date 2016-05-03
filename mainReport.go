@@ -33,6 +33,7 @@ type PageReport struct {
 	Location          string
 	Words             []string
 	TextUrls          []string
+	TextIPs           []string
 	Error             string
 	InvalidTags       []string
 	InvalidAttributes []string
@@ -110,11 +111,14 @@ func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.Tex
 	pr.Location = ""
 	pr.InvalidTags = []string{}
 	pr.InvalidAttributes = []string{}
-	if doWordlist {
-		rawUrls := crawlbase.GetUrlsFromText(page.ResponseBody, 100)
-		pr.TextUrls = bytesToStrings(rawUrls)
-	}
 	pr.Error = page.Error
+
+	if doWordlist {
+		rawText := crawlbase.GetUrlsFromText(page.ResponseBody, 100)
+		pr.TextUrls = bytesToStrings(rawText)
+		rawText = crawlbase.GetIPsFromText(page.ResponseBody, 100)
+		pr.TextIPs = bytesToStrings(rawText)
+	}
 
 	if page.Response != nil {
 		pr.StatusCode = page.Response.StatusCode
@@ -185,6 +189,19 @@ func bytesToStrings(arr [][]byte) []string {
 	return ret
 }
 
+/*
+type Cache struct {
+	dir map[string]interface{}
+}
+
+func (c *Cache) Get(name string) (interface{}, err) {
+	return dir[name]
+}
+
+func (c *Cache) StartLoadingCache(f func(string) interface{}) {
+
+}
+*/
 func generateReport(settings *reportSettings) {
 	startTime := time.Now()
 
@@ -327,17 +344,34 @@ func generateReport(settings *reportSettings) {
 	}
 
 	// form urls
-	sheetFromUrls, _ := file.AddSheet("form urls")
+	sheetFormUrls, _ := file.AddSheet("form urls")
 
 	for pageUrl, cPage := range pageReports {
 		for _, form := range cPage.Forms {
-			row = sheetFromUrls.AddRow()
+			row = sheetFormUrls.AddRow()
 			row.WriteSlice(&[]interface{}{pageUrl, form.Url, form.Method}, -1)
 			for _, input := range form.Inputs {
-				row = sheetFromUrls.AddRow()
+				row = sheetFormUrls.AddRow()
 				row.WriteSlice(&[]interface{}{"", input.Name, input.Type, input.Value}, -1)
 			}
 		}
+	}
+
+	sheetIPs, _ := file.AddSheet("ips")
+	textIPs := map[string]string{}
+
+	for _, p := range pageReports {
+		for _, u := range p.TextIPs {
+			if u == "" {
+				continue
+			}
+			textIPs[u] = p.URL
+		}
+	}
+
+	for u, _ := range textIPs {
+		row = sheetIPs.AddRow()
+		row.WriteSlice(&[]interface{}{u, words[u].Count, words[u].Page}, -1)
 	}
 
 	err = file.Save(settings.ReportFile)

@@ -50,8 +50,8 @@ func mainCrawler() {
 
 	urlFlag := fs.String("url", "", "url, e.g. http://www.google.com")
 	//urlRegEx := flag.String("regex", "", "only crawl links using this regex")
-	waitFlag := fs.Int("wait", 1000, "delay, in milliseconds (default is 1000ms=1sec)")
-	maxPagesFlag := fs.Int("max-pages", -1, "max pages to crawl, -1 for infinite (default is -1)")
+	waitFlag := fs.Int("wait", 1000, "delay, in milliseconds")
+	maxPagesFlag := fs.Int("max-pages", -1, "max pages to crawl, -1 for infinite")
 	//fs.String("storageType", "file", "type of storage. (http,file,ftp)")
 	storagePathFlag := fs.String("storage-path", "./storage", "folder to store crawled files")
 	clearStorageFlag := fs.Bool("clear-storage", false, "delete all storage files")
