@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -35,7 +36,7 @@ type PageReport struct {
 	TextUrls          []string
 	TextIPs           []string
 	Error             string
-	InvalidTags       []string
+	InvalidTags       []*htmlcheck.ValidationError
 	InvalidAttributes []string
 	QueryKeys         map[string]bool
 	Hrefs             map[string]bool
@@ -72,17 +73,6 @@ func mainReport() {
 	generateReport(settings)
 }
 
-func validationErrorToText(validations []*htmlcheck.ValidationError) []string {
-	list := []string{}
-	for _, k := range validations {
-		col := strconv.Itoa(k.TextPos.Column)
-		line := strconv.Itoa(k.TextPos.Line)
-		attr := k.AttributeName
-		list = append(list, "<"+k.TagName+"> "+attr+" ("+line+", "+col+")")
-	}
-	return list
-}
-
 func filterInvalidHtmlByType(validations []*htmlcheck.ValidationError,
 	reason htmlcheck.ErrorReason, max int) []*htmlcheck.ValidationError {
 
@@ -109,7 +99,7 @@ func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.Tex
 	pr.FileName = strconv.Itoa(page.CrawlTime)
 	pr.URL = page.URL
 	pr.Location = ""
-	pr.InvalidTags = []string{}
+	pr.InvalidTags = []*htmlcheck.ValidationError{}
 	pr.InvalidAttributes = []string{}
 	pr.Error = page.Error
 
@@ -127,14 +117,8 @@ func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.Tex
 		if mime == "text/html" {
 			body := string(page.ResponseBody)
 			vErros := vdtr.ValidateHtmlString(body)
-
-			invs := filterInvalidHtmlByType(vErros, htmlcheck.InvTag, 10)
-			htmlcheck.GetErrorLines(body, invs)
-			pr.InvalidTags = validationErrorToText(invs)
-
-			invs = filterInvalidHtmlByType(vErros, htmlcheck.InvAttribute, 10)
-			htmlcheck.GetErrorLines(body, invs)
-			pr.InvalidAttributes = validationErrorToText(invs)
+			htmlcheck.UpdateErrorLines(body, vErros)
+			pr.InvalidTags = vErros
 
 			if doWordlist {
 				plainText, err := html2text.Html2Text(body, *h2tSettings)
@@ -267,20 +251,13 @@ func generateReport(settings *reportSettings) {
 
 	sInvTags, _ := file.AddSheet("invalid tags")
 	for _, info := range pageReports {
-		if len(info.InvalidTags) > 0 || len(info.InvalidAttributes) > 0 {
-			row = sInvTags.AddRow()
-			row.WriteSlice(&[]string{
-				info.FileName,
-				info.URL,
-			}, -1)
-
+		if len(info.InvalidTags) > 0 {
 			for _, inv := range info.InvalidTags {
 				row = sInvTags.AddRow()
-				row.WriteSlice(&[]string{"tag", inv}, -1)
-			}
-			for _, inv := range info.InvalidAttributes {
-				row = sInvTags.AddRow()
-				row.WriteSlice(&[]string{"attr", inv}, -1)
+				reason := fmt.Sprint(inv.Reason)
+				col := fmt.Sprint(inv.TextPos.Column)
+				row.WriteSlice(&[]string{reason, inv.TagName, inv.AttributeName,
+					col, info.FileName, info.URL}, -1)
 			}
 		}
 	}
@@ -348,11 +325,9 @@ func generateReport(settings *reportSettings) {
 
 	for pageUrl, cPage := range pageReports {
 		for _, form := range cPage.Forms {
-			row = sheetFormUrls.AddRow()
-			row.WriteSlice(&[]interface{}{pageUrl, form.Url, form.Method}, -1)
 			for _, input := range form.Inputs {
 				row = sheetFormUrls.AddRow()
-				row.WriteSlice(&[]interface{}{"", input.Name, input.Type, input.Value}, -1)
+				row.WriteSlice(&[]interface{}{"", input.Name, input.Type, input.Value, pageUrl, form.Url, form.Method}, -1)
 			}
 		}
 	}
@@ -369,9 +344,9 @@ func generateReport(settings *reportSettings) {
 		}
 	}
 
-	for u, _ := range textIPs {
+	for ip, url := range textIPs {
 		row = sheetIPs.AddRow()
-		row.WriteSlice(&[]interface{}{u, words[u].Count, words[u].Page}, -1)
+		row.WriteSlice(&[]interface{}{ip, url}, -1)
 	}
 
 	err = file.Save(settings.ReportFile)

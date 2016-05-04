@@ -41,7 +41,7 @@
 	  "itemtype",
 	  "prefix"
     ],
-	"AttrStartsWith":"data-",
+	"AttrStartsWith":"data",
     "AttrRegEx": "data-"
   },
   {
@@ -265,7 +265,8 @@
   },
   {
     "Name": "iframe",
-    "Attrs": [ "height", "frameborder", "scrolling", "name", "src", "height", "width", "allowfullscreen","webkitallowfullscreen","mozallowfullscreen" ],
+    "Attrs": [ "height", "frameborder", "scrolling", "name", "src",
+    "height", "width", "allowfullscreen","webkitallowfullscreen","mozallowfullscreen","allowtransparency" ],
     "IsSelfClosing": false
   },
   {
@@ -548,6 +549,16 @@
   {
     "Name": "kbd",
     "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+   {
+    "Name": "param",
+    "Attrs": [ "name","value" ],
+    "IsSelfClosing": false
+  },
+  {
+    "Name": "progress",
+    "Attrs": [ "value" ],
     "IsSelfClosing": false
   },
    {
