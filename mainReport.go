@@ -250,14 +250,17 @@ func generateReport(settings *reportSettings) {
 	}
 
 	sInvTags, _ := file.AddSheet("invalid tags")
+	row = sInvTags.AddRow()
+	row.WriteSlice(&[]string{"reason", "tag", "attribute", "line",
+		"file name", "url"}, -1)
 	for _, info := range pageReports {
 		if len(info.InvalidTags) > 0 {
 			for _, inv := range info.InvalidTags {
 				row = sInvTags.AddRow()
 				reason := fmt.Sprint(inv.Reason)
-				col := fmt.Sprint(inv.TextPos.Column)
+				line := fmt.Sprint(inv.TextPos.Line)
 				row.WriteSlice(&[]string{reason, inv.TagName, inv.AttributeName,
-					col, info.FileName, info.URL}, -1)
+					line, info.FileName, info.URL}, -1)
 			}
 		}
 	}

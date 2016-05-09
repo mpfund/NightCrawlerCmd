@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/BlackEspresso/crawlbase"
+	"github.com/tealeg/xlsx"
 )
 
 type appSettings struct {
@@ -19,6 +20,7 @@ type appSettings struct {
 	UseResume     bool
 	History       map[string]bool
 	DnsTypeNumber uint16
+	ReportFile    string
 }
 
 func mainDNS() {
@@ -26,10 +28,11 @@ func mainDNS() {
 
 	domain := fs.String("domain", "", "domain for dns scan")
 	wordlist := fs.String("wordlist", "", "path to wordlist for subdomain scan")
-	logFile := fs.String("output", "dnsscan.log", "")
-	resume := fs.Bool("resume", false, "resume, load logs and resume. skips already scanned urls")
+	logFile := fs.String("log", "dnsscan.log", "")
+	resume := fs.Bool("resume", false, "load log file and resume. skips already scanned urls")
 	dnsType := fs.String("typeName", "", "request type by name (A,AAAA,MX,ANY)")
 	dnsTypeNr := fs.Int("typeNumber", 1, "request type by number (1,28,15,255)")
+	outputFile := fs.String("report", "", "output as excel file")
 
 	fs.Parse(os.Args[2:])
 
@@ -40,6 +43,7 @@ func mainDNS() {
 	settings.UseResume = *resume
 	settings.History = map[string]bool{}
 	settings.DnsTypeNumber = uint16(*dnsTypeNr)
+	settings.ReportFile = *outputFile
 
 	if *dnsType != "" {
 		var ok bool
@@ -94,7 +98,11 @@ func scanDNS(settings *appSettings) {
 		dnsResp[settings.Domain] = resp
 	}
 
-	dnsReport(dnsResp, settings)
+	if settings.ReportFile == "" {
+		dnsReport(dnsResp, settings)
+	} else {
+		dnsReportExcel(dnsResp, settings)
+	}
 }
 
 func filterLines(lines []string, settings *appSettings) []string {
@@ -109,10 +117,28 @@ func filterLines(lines []string, settings *appSettings) []string {
 	return filteredLines
 }
 
+func dnsReportExcel(dnsResp map[string][]string, settings *appSettings) {
+	file := xlsx.NewFile()
+	sheet, err := file.AddSheet("dns")
+	checkError(err)
+
+	for subdomain, entries := range dnsResp {
+		row := sheet.AddRow()
+		if len(entries) > 0 {
+			for _, entry := range entries {
+				row.WriteSlice(&[]string{"found", entry}, -1)
+			}
+		} else {
+			row.WriteSlice(&[]string{"not found", subdomain + "." + settings.Domain + ".\n"}, -1)
+		}
+	}
+	err = file.Save(settings.ReportFile)
+	checkError(err)
+}
+
 func dnsReport(dnsResp map[string][]string, settings *appSettings) {
 	buffer := bytes.Buffer{}
-	for subdomain, _ := range dnsResp {
-		entries := dnsResp[subdomain]
+	for subdomain, entries := range dnsResp {
 		if len(entries) > 0 {
 			for _, entry := range entries {
 				buffer.WriteString(entry + "\n")
