@@ -1,0 +1,10 @@
+[
+{
+	"Vector":"\"><img src=x onerror=alert(4)>",
+	"Test":"<img src=x onerror=alert(4)>"
+},
+{
+	"Vector":"' and '1'='1' --",
+	"SqlInjection":true
+}
+]

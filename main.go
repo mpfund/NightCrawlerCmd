@@ -20,6 +20,8 @@ func main() {
 		mainReport()
 	} else if args[1] == "portscan" {
 		mainPortScan()
+	} else if args[1] == "curl" {
+		mainHttpCurl()
 	} else if args[1] == "httpscan" {
 		mainHttpScan()
 	} else {
