@@ -6,5 +6,19 @@
 {
 	"Vector":"' and '1'='1' --",
 	"SqlInjection":true
+},
+{
+	"Vector":"</script>alert(435)<script>"
+},
+{
+	"Vector":"><IMG SRC=\"jav&#x09;ascript:alert(435);\">"
+},
+{
+	"Vector":"1; WAIT FOR DELAY '00:00:15'",
+	"SqlInjection":true
+},
+{
+	"Vector":"1-BENCHMARK(100000000, rand())",
+	"SqlInjection":true
 }
 ]
