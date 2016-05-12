@@ -8,7 +8,43 @@
 	"SqlInjection":true
 },
 {
-	"Vector":"</script>alert(435)<script>"
+	"Vector":"</script><script>alert(435)</script>"
+},
+{
+	"Vector":"<zq></zq>"
+},
+{
+	"Vector":"%3czq%3d",
+	"Test":"<zq>"
+},
+{
+	"Vector":"%253czq%253d",
+	"Test":"<zq>"
+},
+{
+	"Vector":"%25253czq%25253d",
+	"Test":"<zq>"
+},
+{
+	"Vector":"/etc/passwd"
+},
+{
+	"Vector":"*"
+},
+{
+	"Vector":"%x%x%x%x%x%x%x%x%x%x"
+},
+{
+	"Vector":"1; phpinfo()"
+},
+{
+	"Vector":"../../../../../../../../../etc/passwd"
+},
+{
+	"Vector":"<!--#exec cmd=\"ls\" -->"
+},
+{
+	"Vector":"\"'qqqq"
 },
 {
 	"Vector":"><IMG SRC=\"jav&#x09;ascript:alert(435);\">"

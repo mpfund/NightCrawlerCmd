@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -20,6 +22,7 @@ type appScannerSettings struct {
 	Host       string
 	Scheme     string
 	VectorFile string
+	URL        string
 }
 
 type appScan struct {
@@ -40,6 +43,7 @@ type ScanResult struct {
 	Error              string
 	Found              bool
 	ResponseBodyLength int
+	Url                string
 }
 
 func mainHttpScan() {
@@ -50,6 +54,7 @@ func mainHttpScan() {
 	schemeFlag := fs.String("scheme", "", "set scheme (http, https, ...)")
 	report := fs.String("report", "report.xlsx", "report file")
 	vectorFile := fs.String("vectors", "vectors.json", "file with attack vectors")
+	urlFlag := fs.String("url", "", "url instead of input file")
 
 	fs.Parse(os.Args[2:])
 
@@ -59,6 +64,7 @@ func mainHttpScan() {
 	settings.Host = *hostFlag
 	settings.Scheme = *schemeFlag
 	settings.VectorFile = *vectorFile
+	settings.URL = *urlFlag
 
 	req := getRequest(settings)
 
@@ -68,9 +74,9 @@ func mainHttpScan() {
 	var err error
 	timeStart := time.Now()
 	scan.BaseResponse, err = http.DefaultClient.Do(req)
+	checkError(err)
 	body, _ := ioutil.ReadAll(scan.BaseResponse.Body)
 	dur := time.Now().Sub(timeStart)
-	checkError(err)
 	baseResult := requestToResult(scan.BaseResponse, &AttackVector{},
 		dur, err, false, body)
 
@@ -92,15 +98,30 @@ func generateScanReport(results []*ScanResult, settings *appScannerSettings) {
 
 	row := sheetScan.AddRow()
 	row.WriteSlice(&[]string{"Index", "Test", "Duration", "Status Code",
-		"Body Length", "Error", "Found"}, -1)
+		"Body Length", "Error", "Found", "URL"}, -1)
 
 	for i, result := range results {
 		row = sheetScan.AddRow()
-		row.WriteSlice(&[]interface{}{i, result.AttackVector.Vector,
-			result.Duration, result.Response.StatusCode,
-			result.ResponseBodyLength, result.Error, result.Found}, -1)
+		if result.Response == nil {
+			row.WriteSlice(&[]interface{}{i, result.AttackVector.Vector,
+				result.Duration, -1,
+				result.ResponseBodyLength, result.Error, result.Found,
+				result.Url}, -1)
+		} else {
+			row.WriteSlice(&[]interface{}{i, result.AttackVector.Vector,
+				result.Duration, result.Response.StatusCode,
+				result.ResponseBodyLength, result.Error, result.Found,
+				result.Url}, -1)
+		}
+
 	}
 	err = file.Save(settings.ReportFile)
+	if err != nil {
+		logPrint(err)
+	} else {
+		return
+	}
+	err = file.Save("report2.xlsx")
 	checkError(err)
 }
 
@@ -110,21 +131,24 @@ func scanUrl(baseRequest *http.Request, vectors []*AttackVector) []*ScanResult {
 	results := []*ScanResult{}
 	for key, _ := range bQueries {
 		for _, vec := range vectors {
-			req := *baseRequest
-			queries := baseRequest.URL.Query()
+			req := copyRequest(baseRequest)
+
+			queries := req.URL.Query()
 			queries.Set(key, vec.Vector)
 
 			req.URL.RawQuery = queries.Encode()
 			fmt.Println(key, req.URL)
-
 			startTime := time.Now()
-			resp, _ := http.DefaultClient.Do(&req)
+			resp, err := http.DefaultClient.Do(req)
 			dur := time.Now().Sub(startTime)
-
-			bodyData, err := ioutil.ReadAll(resp.Body)
-			testVector := vec.Test
-			if testVector == "" {
-				testVector = vec.Vector
+			var bodyData []byte
+			var testVector string
+			if err == nil {
+				bodyData, err = ioutil.ReadAll(resp.Body)
+				testVector = vec.Test
+				if testVector == "" {
+					testVector = vec.Vector
+				}
 			}
 			index := strings.Index(string(bodyData), testVector)
 			result := requestToResult(resp, vec, dur, err, index >= 0, bodyData)
@@ -132,6 +156,17 @@ func scanUrl(baseRequest *http.Request, vectors []*AttackVector) []*ScanResult {
 		}
 	}
 	return results
+}
+
+func copyRequest(req *http.Request) *http.Request {
+	buffer := new(bytes.Buffer)
+	req.Write(buffer)
+	newreq, err := http.ReadRequest(bufio.NewReader(buffer))
+	checkError(err)
+	newreq.URL.Host = req.URL.Host
+	newreq.URL.Scheme = req.URL.Scheme
+	newreq.RequestURI = ""
+	return newreq
 }
 
 func requestToResult(resp *http.Response, vec *AttackVector,
@@ -153,12 +188,21 @@ func requestToResult(resp *http.Response, vec *AttackVector,
 		result.Response.StatusCode = resp.StatusCode
 		result.Found = found
 		result.ResponseBodyLength = len(body)
+		result.Url = resp.Request.URL.String()
 	}
 	return result
 }
 
 func getRequest(settings *appScannerSettings) *http.Request {
-	req := readHttpRequest(settings.InputFile)
+	var req *http.Request
+	var err error
+	if settings.InputFile != "" {
+		req, err = readHttpRequest(settings.InputFile)
+		checkError(err)
+	} else {
+		req, err = http.NewRequest("GET", settings.URL, nil)
+		checkError(err)
+	}
 	if settings.Host != "" {
 		req.URL.Host = settings.Host
 	}

@@ -41,7 +41,8 @@ func mainHttpCurl() {
 	settings := appHttpCurlSettings{}
 	settings.InputFile = *inputFile
 
-	req := readHttpRequest(settings.InputFile)
+	req, err := readHttpRequest(settings.InputFile)
+	checkError(err)
 	if *hostFlag != "" {
 		req.URL.Host = *hostFlag
 	}
@@ -77,13 +78,15 @@ func writeHttpResponseToFile(fileName string, resp *http.Response) {
 	resp.Write(f)
 }
 
-func readHttpRequest(fileName string) *http.Request {
+func readHttpRequest(fileName string) (*http.Request, error) {
 	f, err := os.Open(fileName)
 	checkError(err)
 	defer f.Close()
 	bf := bufio.NewReader(f)
 	req, err := http.ReadRequest(bf)
-	checkError(err)
+	if err != nil {
+		return nil, err
+	}
 	req.RequestURI = ""
 
 	if req.URL.Scheme == "" {
@@ -93,5 +96,5 @@ func readHttpRequest(fileName string) *http.Request {
 		req.URL.Host = req.Host
 	}
 
-	return req
+	return req, nil
 }
