@@ -11,7 +11,7 @@
 	"Vector":"</script><script>alert(435)</script>"
 },
 {
-	"Vector":"<zq></zq>"
+	"Vector":"<zq>"
 },
 {
 	"Vector":"%3czq%3d",
@@ -26,16 +26,33 @@
 	"Test":"<zq>"
 },
 {
+	"Vector":"\" style=\"mm\""
+},
+{
+	"Vector":"¼script¾alert(324)¼/script¾",
+	"Test":"<script>alert(324)</script>"
+},
+{
 	"Vector":"/etc/passwd"
 },
 {
 	"Vector":"*"
 },
 {
+	"Vector":"..\\..\\..\\..\\..\\..\\..\\Windows\\win.ini"
+},
+{
 	"Vector":"%x%x%x%x%x%x%x%x%x%x"
 },
 {
 	"Vector":"1; phpinfo()"
+},
+{
+	"Vector":"\\x3czq",
+	"Test":"<zq"
+},
+{
+	"Vector":"'';!--\"<XSS>=&{()}"
 },
 {
 	"Vector":"../../../../../../../../../etc/passwd"

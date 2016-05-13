@@ -201,6 +201,7 @@ func getRequest(settings *appScannerSettings) *http.Request {
 		checkError(err)
 	} else {
 		req, err = http.NewRequest("GET", settings.URL, nil)
+		req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.94 Safari/537.36")
 		checkError(err)
 	}
 	if settings.Host != "" {
