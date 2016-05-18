@@ -17,16 +17,19 @@ import (
 )
 
 type appScannerSettings struct {
-	InputFile  string
-	ReportFile string
-	Host       string
-	Scheme     string
-	VectorFile string
-	URL        string
+	InputFile       string
+	ReportFile      string
+	Host            string
+	Scheme          string
+	VectorFile      string
+	URL             string
+	ScanHttpHeaders bool
 }
 
 type appScan struct {
 	BaseResponse *http.Response
+	BaseRequest  *http.Request
+	Vectors      []*AttackVector
 }
 
 type AttackVector struct {
@@ -44,6 +47,7 @@ type ScanResult struct {
 	Found              bool
 	ResponseBodyLength int
 	Url                string
+	ParamTarget        string
 }
 
 func mainHttpScan() {
@@ -55,6 +59,7 @@ func mainHttpScan() {
 	report := fs.String("report", "report.xlsx", "report file")
 	vectorFile := fs.String("vectors", "vectors.json", "file with attack vectors")
 	urlFlag := fs.String("url", "", "url instead of input file")
+	scanHeaderFlag := fs.Bool("scanheader", false, "try HTTP headers")
 
 	fs.Parse(os.Args[2:])
 
@@ -65,29 +70,30 @@ func mainHttpScan() {
 	settings.Scheme = *schemeFlag
 	settings.VectorFile = *vectorFile
 	settings.URL = *urlFlag
+	settings.ScanHttpHeaders = *scanHeaderFlag
 
 	req := getRequest(settings)
 
-	scan := appScan{}
-	var vectors []*AttackVector
+	scan := new(appScan)
 
 	var err error
 	timeStart := time.Now()
+	scan.BaseRequest = copyRequest(req)
 	scan.BaseResponse, err = http.DefaultClient.Do(req)
 	checkError(err)
 	body, _ := ioutil.ReadAll(scan.BaseResponse.Body)
 	dur := time.Now().Sub(timeStart)
 	baseResult := requestToResult(scan.BaseResponse, &AttackVector{},
-		dur, err, false, body)
+		dur, err, false, body, "")
 
 	data, err := ioutil.ReadFile(settings.VectorFile)
 	checkError(err)
-	err = json.Unmarshal(data, &vectors)
+	err = json.Unmarshal(data, &scan.Vectors)
 	checkError(err)
 
 	results := []*ScanResult{}
 	results = append(results, baseResult)
-	results = append(results, scanUrl(req, vectors)...)
+	results = append(results, scanUrl(settings, scan)...)
 	generateScanReport(results, settings)
 }
 
@@ -106,12 +112,12 @@ func generateScanReport(results []*ScanResult, settings *appScannerSettings) {
 			row.WriteSlice(&[]interface{}{i, result.AttackVector.Vector,
 				result.Duration, -1,
 				result.ResponseBodyLength, result.Error, result.Found,
-				result.Url}, -1)
+				result.Url, result.ParamTarget}, -1)
 		} else {
 			row.WriteSlice(&[]interface{}{i, result.AttackVector.Vector,
 				result.Duration, result.Response.StatusCode,
 				result.ResponseBodyLength, result.Error, result.Found,
-				result.Url}, -1)
+				result.Url, result.ParamTarget}, -1)
 		}
 
 	}
@@ -125,37 +131,55 @@ func generateScanReport(results []*ScanResult, settings *appScannerSettings) {
 	checkError(err)
 }
 
-func scanUrl(baseRequest *http.Request, vectors []*AttackVector) []*ScanResult {
-	bQueries := baseRequest.URL.Query()
-	fmt.Println(bQueries)
+func scanUrl(settings *appScannerSettings, scan *appScan) []*ScanResult {
+	bQueries := scan.BaseRequest.URL.Query()
 	results := []*ScanResult{}
+
 	for key, _ := range bQueries {
-		for _, vec := range vectors {
-			req := copyRequest(baseRequest)
+		for _, vec := range scan.Vectors {
+			req := copyRequest(scan.BaseRequest)
 
 			queries := req.URL.Query()
 			queries.Set(key, vec.Vector)
 
 			req.URL.RawQuery = queries.Encode()
 			fmt.Println(key, req.URL)
-			startTime := time.Now()
-			resp, err := http.DefaultClient.Do(req)
-			dur := time.Now().Sub(startTime)
-			var bodyData []byte
-			var testVector string
-			if err == nil {
-				bodyData, err = ioutil.ReadAll(resp.Body)
-				testVector = vec.Test
-				if testVector == "" {
-					testVector = vec.Vector
-				}
-			}
-			index := strings.Index(string(bodyData), testVector)
-			result := requestToResult(resp, vec, dur, err, index >= 0, bodyData)
+			result := doRequest(req, vec, "url "+key)
 			results = append(results, result)
 		}
 	}
+
+	if settings.ScanHttpHeaders {
+		for key, _ := range scan.BaseRequest.Header {
+			for _, vec := range scan.Vectors {
+				req := copyRequest(scan.BaseRequest)
+				header := req.Header.Get(key)
+				req.Header.Set(key, header+vec.Vector)
+				result := doRequest(req, vec, "header "+key)
+				results = append(results, result)
+			}
+		}
+	}
+
 	return results
+}
+
+func doRequest(req *http.Request, vector *AttackVector, paramTarget string) *ScanResult {
+	startTime := time.Now()
+	resp, err := http.DefaultClient.Do(req)
+	dur := time.Now().Sub(startTime)
+	var bodyData []byte
+	var testVector string
+	if err == nil {
+		bodyData, err = ioutil.ReadAll(resp.Body)
+		testVector = vector.Test
+		if testVector == "" {
+			testVector = vector.Vector
+		}
+	}
+	index := strings.Index(string(bodyData), testVector)
+	result := requestToResult(resp, vector, dur, err, index >= 0, bodyData, paramTarget)
+	return result
 }
 
 func copyRequest(req *http.Request) *http.Request {
@@ -170,7 +194,7 @@ func copyRequest(req *http.Request) *http.Request {
 }
 
 func requestToResult(resp *http.Response, vec *AttackVector,
-	duration time.Duration, err error, found bool, body []byte) *ScanResult {
+	duration time.Duration, err error, found bool, body []byte, paramTarget string) *ScanResult {
 	result := new(ScanResult)
 	result.Duration = int(duration.Seconds() * 1000)
 	result.AttackVector = vec
@@ -187,6 +211,7 @@ func requestToResult(resp *http.Response, vec *AttackVector,
 		result.Response.Proto = resp.Proto
 		result.Response.StatusCode = resp.StatusCode
 		result.Found = found
+		result.ParamTarget = paramTarget
 		result.ResponseBodyLength = len(body)
 		result.Url = resp.Request.URL.String()
 	}
