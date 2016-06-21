@@ -1,10 +1,15 @@
 {
-	"Bricks":[
-		"a","li","ul","href","img","src","class","zq","br","p","id",
-		"rel","nofollow","i","br","table","tr","a","address"],
-	"Spaces":[" ","=","/"],
-	"Surroundings":["\"","/","<",">"],
-	"BuildLogic":"<bsbsxbx>",
+	"Vectors":{
+		"t":["a","img","zq","br","p","html","head","body","address","style","</style>"],
+		"a":["error","click","load","toggle","show","wheel","style","src","class","id","rel"],
+		"j":["alert(4)","javascript:alert(3)"],
+		"s":[" ","/"],
+		"x":["\"","<",">","<!--","-->"],
+		"m":["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","💩"],
+		"b":[":","#","~","_","__","<",">","[","]","{","}","(",")","![","|","\\","\"","'","%","$","§","@",
+			"=","?","ß","&#",";","\n","\r","`","*"]
+	},
+	"BuildLogic":"<mmmbbbbb><zq ona='j'>",
 	"Seed":40039,
-	"Iterations":800000
+	"Iterations":50000
 }

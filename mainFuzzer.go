@@ -4,19 +4,21 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"html"
 	"io/ioutil"
 	"math/rand"
+	"net/url"
 	"os"
 )
 
 type FuzzingInput struct {
-	Bricks       []string
-	Spaces       []string
-	Surroundings []string
-	Iterations   int
-	BuildLogic   string // bsxsx
-	Seed         int64
+	Vectors    map[string][]string
+	Iterations int
+	BuildLogic string // bsxsx
+	Seed       int64
 }
+
+type Enc func(string) []byte
 
 func mainFuzzer() {
 	fs := flag.NewFlagSet("fuzzer", flag.ExitOnError)
@@ -30,33 +32,64 @@ func mainFuzzer() {
 	fi := FuzzingInput{}
 	err = json.Unmarshal(inputContent, &fi)
 	checkError(err)
-	outputContent := genFuzzingOutput(&fi)
+	encodings := []Enc{NoEncode}
+	outputContent := genFuzzingOutput(&fi, encodings)
 	ioutil.WriteFile(*output, outputContent, 0666)
 }
 
-func genFuzzingOutput(fi *FuzzingInput) []byte {
+func UrlEncode(text string) []byte {
+	return []byte(url.QueryEscape(text))
+}
+
+func NoEncode(text string) []byte {
+	return []byte(text)
+}
+
+func HtmlEncode(text string) []byte {
+	return []byte(html.EscapeString(text))
+}
+
+func genFuzzingOutput(fi *FuzzingInput, encodings []Enc) []byte {
 	b := bytes.Buffer{}
 	nextType := 'x'
-
+	hasBuildLogic := len(fi.BuildLogic) > 0
 	rand.Seed(fi.Seed)
+	text := ""
+
+	keys := getKeys(fi.Vectors)
 
 	for x := 0; x < fi.Iterations; x++ {
-		nextType = infinityString(fi.BuildLogic, x)
-		switch nextType {
-		case 'b':
-			brickN := rand.Intn(len(fi.Bricks))
-			b.WriteString(fi.Bricks[brickN])
-		case 's':
-			spaceN := rand.Intn(len(fi.Spaces))
-			b.WriteString(fi.Spaces[spaceN])
-		case 'x':
-			surrN := rand.Intn(len(fi.Surroundings))
-			b.WriteString(fi.Surroundings[surrN])
-		default:
-			b.WriteString(string(nextType))
+
+		if hasBuildLogic {
+			nextType = infinityString(fi.BuildLogic, x)
+		} else {
+			nextType = []rune(keys[rand.Intn(len(keys))])[0]
 		}
+
+		vecs, ok := fi.Vectors[string(nextType)]
+
+		if ok {
+			brickN := rand.Intn(len(vecs))
+			text = vecs[brickN]
+		} else {
+			text = string(nextType)
+		}
+
+		encodingN := rand.Intn(len(encodings))
+		b.Write(encodings[encodingN](text))
 	}
 	return b.Bytes()
+}
+
+func getKeys(dict map[string][]string) []string {
+	keys := make([]string, len(dict))
+
+	i := 0
+	for k := range dict {
+		keys[i] = k
+		i++
+	}
+	return keys
 }
 
 func infinityString(text string, pos int) rune {
