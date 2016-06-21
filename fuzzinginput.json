@@ -1,0 +1,10 @@
+{
+	"Bricks":[
+		"a","li","ul","href","img","src","class","zq","br","p","id",
+		"rel","nofollow","i","br","table","tr","a","address"],
+	"Spaces":[" ","=","/"],
+	"Surroundings":["\"","/","<",">"],
+	"BuildLogic":"<bsbsxbx>",
+	"Seed":40039,
+	"Iterations":800000
+}
