@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/BlackEspresso/crawlbase"
-	"github.com/tealeg/xlsx"
 )
 
 type appScannerSettings struct {
@@ -24,6 +24,7 @@ type appScannerSettings struct {
 	VectorFile      string
 	URL             string
 	ScanHttpHeaders bool
+	ReportTemplate  *template.Template
 }
 
 type appScan struct {
@@ -56,14 +57,18 @@ func mainHttpScan() {
 	inputFile := fs.String("input", "", "input file")
 	hostFlag := fs.String("host", "", "set host")
 	schemeFlag := fs.String("scheme", "", "set scheme (http, https, ...)")
-	report := fs.String("report", "report.xlsx", "report file")
+	report := fs.String("report", "report.html", "report file")
 	vectorFile := fs.String("vectors", "vectors.json", "file with attack vectors")
 	urlFlag := fs.String("url", "", "url instead of input file")
-	scanHeaderFlag := fs.Bool("scanheader", false, "try HTTP headers")
+	scanHeaderFlag := fs.Bool("scanheader", false, "scan HTTP headers, too")
 
 	fs.Parse(os.Args[2:])
 
+	tmpl, err := template.ParseFiles("./templates/httpscanresult.tmpl")
+	checkError(err)
+
 	settings := &appScannerSettings{}
+	settings.ReportTemplate = tmpl
 	settings.InputFile = *inputFile
 	settings.ReportFile = *report
 	settings.Host = *hostFlag
@@ -76,7 +81,6 @@ func mainHttpScan() {
 
 	scan := new(appScan)
 
-	var err error
 	timeStart := time.Now()
 	scan.BaseRequest = copyRequest(req)
 	scan.BaseResponse, err = http.DefaultClient.Do(req)
@@ -98,36 +102,11 @@ func mainHttpScan() {
 }
 
 func generateScanReport(results []*ScanResult, settings *appScannerSettings) {
-	file := xlsx.NewFile()
-	sheetScan, err := file.AddSheet("Scanned Urls")
+	file, err := os.OpenFile(settings.ReportFile, os.O_CREATE|os.O_TRUNC, 0666)
 	checkError(err)
+	defer file.Close()
 
-	row := sheetScan.AddRow()
-	row.WriteSlice(&[]string{"Index", "Test", "Duration", "Status Code",
-		"Body Length", "Error", "Found", "URL"}, -1)
-
-	for i, result := range results {
-		row = sheetScan.AddRow()
-		if result.Response == nil {
-			row.WriteSlice(&[]interface{}{i, result.AttackVector.Vector,
-				result.Duration, -1,
-				result.ResponseBodyLength, result.Error, result.Found,
-				result.Url, result.ParamTarget}, -1)
-		} else {
-			row.WriteSlice(&[]interface{}{i, result.AttackVector.Vector,
-				result.Duration, result.Response.StatusCode,
-				result.ResponseBodyLength, result.Error, result.Found,
-				result.Url, result.ParamTarget}, -1)
-		}
-
-	}
-	err = file.Save(settings.ReportFile)
-	if err != nil {
-		logPrint(err)
-	} else {
-		return
-	}
-	err = file.Save("report2.xlsx")
+	err = settings.ReportTemplate.Execute(file, results)
 	checkError(err)
 }
 

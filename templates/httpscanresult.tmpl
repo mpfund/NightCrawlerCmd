@@ -1,0 +1,27 @@
+<html>
+
+<table>
+<tr>
+	<th>Vector</th>
+	<th>Duration</th>
+	<th>Status Code</th>
+	<th>Response Length</th>
+	<th>Error</th>
+	<th>Found</th>
+	<th>Url</th>
+	<th>Parameter</th>
+</tr>
+{{ range $value := . }}
+   <tr>
+	<td>{{$value.AttackVector.Vector}}</td>
+	<td>{{$value.Duration}}</td>
+	<td>{{$value.Response.StatusCode}}</td>
+	<td>{{$value.ResponseBodyLength}}</td>
+	<td>{{$value.Error}}</td>
+	<td>{{$value.Found}}</td>
+	<td><a href="{{$value.Url}}">Open</a></td>
+	<td>{{$value.ParamTarget}}</td>
+	</tr>
+{{ end }}
+</table>
+</html>
