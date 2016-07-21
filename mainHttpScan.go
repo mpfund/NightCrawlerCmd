@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -140,7 +141,33 @@ func scanUrl(settings *appScannerSettings, scan *appScan) []*ScanResult {
 		}
 	}
 
+	segments := getPathSegements(scan.BaseRequest.URL.EscapedPath())
+
+	for i, _ := range segments {
+		if segments[i] == "" {
+			continue
+		}
+		for _, vec := range scan.Vectors {
+			req := copyRequest(scan.BaseRequest)
+			reqSegments := getPathSegements(req.URL.EscapedPath())
+			reqSegments[i] = vec.Vector
+			segs := strings.Join(reqSegments, "/")
+			req.URL, _ = newUrlPath(req.URL, segs)
+			result := doRequest(req, vec, "urlsegment "+segments[i])
+			results = append(results, result)
+		}
+	}
 	return results
+}
+
+func getPathSegements(path string) []string {
+	return strings.Split(path, "/")
+}
+
+func newUrlPath(u *url.URL, path string) (*url.URL, error) {
+	nUrlText := u.Scheme + "://" + u.Host + path + "?" + u.RawQuery +
+		"#" + u.Fragment
+	return u.Parse(nUrlText)
 }
 
 func doRequest(req *http.Request, vector *AttackVector, paramTarget string) *ScanResult {

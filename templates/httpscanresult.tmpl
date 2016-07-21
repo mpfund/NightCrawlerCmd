@@ -15,7 +15,11 @@
    <tr>
 	<td>{{$value.AttackVector.Vector}}</td>
 	<td>{{$value.Duration}}</td>
+	{{if $value.Response}}
 	<td>{{$value.Response.StatusCode}}</td>
+	{{else}}
+	<td>-1</td>
+	{{end}}
 	<td>{{$value.ResponseBodyLength}}</td>
 	<td>{{$value.Error}}</td>
 	<td>{{$value.Found}}</td>

@@ -26,6 +26,14 @@
 	"Test":"<zq"
 },
 {
+	"Vector":"\\zq\\\"<zq>%22%3czq>//",
+	"Test":"<zq"
+},
+{
+	"Vector":"%22%3czq>//",
+	"Test":"zq>"
+},
+{
 	"Vector":"\" style=\"mm\""
 },
 {
