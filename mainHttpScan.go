@@ -38,6 +38,7 @@ type AttackVector struct {
 	Vector       string
 	Test         string
 	SqlInjection bool
+	Section      string
 }
 
 type ScanResult struct {
@@ -147,7 +148,12 @@ func scanUrl(settings *appScannerSettings, scan *appScan) []*ScanResult {
 		if segments[i] == "" {
 			continue
 		}
+
 		for _, vec := range scan.Vectors {
+			if vec.Section != "" &&
+				strings.Index(vec.Section, "urlsegment") == -1 {
+				continue
+			}
 			req := copyRequest(scan.BaseRequest)
 			reqSegments := getPathSegements(req.URL.EscapedPath())
 			reqSegments[i] = vec.Vector
