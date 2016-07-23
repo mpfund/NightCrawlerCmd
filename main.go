@@ -26,6 +26,8 @@ func main() {
 		mainHttpScan()
 	} else if args[1] == "fuzzer" {
 		mainFuzzer()
+	} else if args[1] == "httpserver" {
+		mainHttpServer()
 	} else {
 		fmt.Println("tool " + args[1] + " not found")
 	}
