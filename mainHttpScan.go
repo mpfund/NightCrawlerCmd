@@ -103,7 +103,7 @@ func mainHttpScan() {
 }
 
 func generateScanReport(results []*ScanResult, settings *appScannerSettings) {
-	file, err := os.OpenFile(settings.ReportFile, os.O_CREATE|os.O_TRUNC, 0666)
+	file, err := os.OpenFile(settings.ReportFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0666)
 	checkError(err)
 	defer file.Close()
 
