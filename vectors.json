@@ -48,7 +48,7 @@
 	"Section":"header,urlquery"
 },
 {
-	"Vector":"/etc/passwd"
+	"Vector":"/etc/hosts"
 },
 {
 	"Vector":"*"
@@ -71,7 +71,7 @@
 	"Section":"header,urlquery"
 },
 {
-	"Vector":"../../../../../../../../../etc/passwd"
+	"Vector":"../../../../../../../../../etc/hosts"
 },
 {
 	"Vector":"<!--#exec cmd=\"ls\" -->",
