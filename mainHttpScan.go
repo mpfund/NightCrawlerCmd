@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,6 +28,7 @@ type appScannerSettings struct {
 	URL             string
 	ScanHttpHeaders bool
 	ReportTemplate  *template.Template
+	outputFolder    string
 }
 
 type appScan struct {
@@ -51,6 +54,7 @@ type ScanResult struct {
 	ResponseBodyLength int
 	Url                string
 	ParamTarget        string
+	FilePath           string
 }
 
 func mainHttpScan() {
@@ -63,6 +67,7 @@ func mainHttpScan() {
 	vectorFile := fs.String("vectors", "vectors.json", "file with attack vectors")
 	urlFlag := fs.String("url", "", "url instead of input file")
 	scanHeaderFlag := fs.Bool("scanheader", false, "scan HTTP headers, too")
+	outputFolder := fs.String("output", "", "url instead of input file")
 
 	fs.Parse(os.Args[2:])
 
@@ -78,19 +83,13 @@ func mainHttpScan() {
 	settings.VectorFile = *vectorFile
 	settings.URL = *urlFlag
 	settings.ScanHttpHeaders = *scanHeaderFlag
-
-	req := getRequest(settings)
+	settings.outputFolder = *outputFolder
 
 	scan := new(appScan)
 
-	timeStart := time.Now()
-	scan.BaseRequest = copyRequest(req)
-	scan.BaseResponse, err = http.DefaultClient.Do(req)
-	checkError(err)
-	body, _ := ioutil.ReadAll(scan.BaseResponse.Body)
-	dur := time.Now().Sub(timeStart)
-	baseResult := requestToResult(scan.BaseResponse, &AttackVector{},
-		dur, err, false, body, "")
+	req := getRequest(settings)
+	scan.BaseRequest = req
+	baseResult := doRequest(settings, scan.BaseRequest, &AttackVector{}, "BaseRequest")
 
 	data, err := ioutil.ReadFile(settings.VectorFile)
 	checkError(err)
@@ -125,7 +124,7 @@ func scanUrl(settings *appScannerSettings, scan *appScan) []*ScanResult {
 
 			req.URL.RawQuery = queries.Encode()
 			fmt.Println(key, req.URL)
-			result := doRequest(req, vec, "url "+key)
+			result := doRequest(settings, req, vec, "urlquery "+key)
 			results = append(results, result)
 		}
 	}
@@ -136,7 +135,7 @@ func scanUrl(settings *appScannerSettings, scan *appScan) []*ScanResult {
 				req := copyRequest(scan.BaseRequest)
 				header := req.Header.Get(key)
 				req.Header.Set(key, header+vec.Vector)
-				result := doRequest(req, vec, "header "+key)
+				result := doRequest(settings, req, vec, "header "+key)
 				results = append(results, result)
 			}
 		}
@@ -159,7 +158,7 @@ func scanUrl(settings *appScannerSettings, scan *appScan) []*ScanResult {
 			reqSegments[i] = vec.Vector
 			segs := strings.Join(reqSegments, "/")
 			req.URL, _ = newUrlPath(req.URL, segs)
-			result := doRequest(req, vec, "urlsegment "+segments[i])
+			result := doRequest(settings, req, vec, "urlsegment "+segments[i])
 			results = append(results, result)
 		}
 	}
@@ -176,7 +175,8 @@ func newUrlPath(u *url.URL, path string) (*url.URL, error) {
 	return u.Parse(nUrlText)
 }
 
-func doRequest(req *http.Request, vector *AttackVector, paramTarget string) *ScanResult {
+func doRequest(settings *appScannerSettings, req *http.Request,
+	vector *AttackVector, paramTarget string) *ScanResult {
 	startTime := time.Now()
 	resp, err := http.DefaultClient.Do(req)
 	dur := time.Now().Sub(startTime)
@@ -190,7 +190,16 @@ func doRequest(req *http.Request, vector *AttackVector, paramTarget string) *Sca
 		}
 	}
 	index := strings.Index(string(bodyData), testVector)
-	result := requestToResult(resp, vector, dur, err, index >= 0, bodyData, paramTarget)
+
+	filePath := ""
+	if settings.outputFolder != "" {
+		fileName := strconv.FormatInt(startTime.UnixNano(), 10)
+		filePath = path.Join(settings.outputFolder, fileName)
+		ioutil.WriteFile(filePath, bodyData, 0666)
+	}
+
+	result := requestToResult(resp, vector, filePath, dur, err,
+		index >= 0, bodyData, paramTarget)
 	return result
 }
 
@@ -205,7 +214,7 @@ func copyRequest(req *http.Request) *http.Request {
 	return newreq
 }
 
-func requestToResult(resp *http.Response, vec *AttackVector,
+func requestToResult(resp *http.Response, vec *AttackVector, filePath string,
 	duration time.Duration, err error, found bool, body []byte, paramTarget string) *ScanResult {
 	result := new(ScanResult)
 	result.Duration = int(duration.Seconds() * 1000)
@@ -225,6 +234,7 @@ func requestToResult(resp *http.Response, vec *AttackVector,
 		result.Found = found
 		result.ParamTarget = paramTarget
 		result.ResponseBodyLength = len(body)
+		result.FilePath = filePath
 		result.Url = resp.Request.URL.String()
 	}
 	return result

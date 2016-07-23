@@ -10,6 +10,7 @@
 	<th>Found</th>
 	<th>Url</th>
 	<th>Parameter</th>
+	<th>Full response</th>
 </tr>
 {{ range $value := . }}
    <tr>
@@ -23,8 +24,9 @@
 	<td>{{$value.ResponseBodyLength}}</td>
 	<td>{{$value.Error}}</td>
 	<td>{{$value.Found}}</td>
-	<td><a href="{{$value.Url}}">Open</a></td>
+	<td><a href="{{$value.Url}}" target="_blank">Open</a></td>
 	<td>{{$value.ParamTarget}}</td>
+	<td><a href="{{$value.FilePath}}" target="_blank">Show</a></td>
 	</tr>
 {{ end }}
 </table>

@@ -9,6 +9,10 @@
 	"SqlInjection":true
 },
 {
+	"Vector":"' and '1'='2' --",
+	"SqlInjection":true
+},
+{
 	"Vector":"</script><script>alert(435)</script>",
 	"Section":"header,urlquery"
 },
