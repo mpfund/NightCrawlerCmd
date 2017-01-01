@@ -90,7 +90,7 @@ func filterInvalidHtmlByType(validations []*htmlcheck.ValidationError,
 	return errors
 }
 
-func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.TexterSettings, doWordlist bool) *PageReport {
+func loadPage(file string, vdtr *htmlcheck.Validator, doWordlist bool) *PageReport {
 	page, err := crawlbase.LoadPage(file, true)
 	checkError(err)
 
@@ -102,6 +102,9 @@ func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.Tex
 	pr.InvalidTags = []*htmlcheck.ValidationError{}
 	pr.InvalidAttributes = []string{}
 	pr.Error = page.Error
+
+	h2tSettings := html2text.NewSettings()
+	h2tSettings.IncludeLinkUrls = false
 
 	if doWordlist {
 		rawText := crawlbase.GetUrlsFromText(page.ResponseBody, 100)
@@ -121,7 +124,7 @@ func loadPage(file string, vdtr *htmlcheck.Validator, h2tSettings *html2text.Tex
 			pr.InvalidTags = vErros
 
 			if doWordlist {
-				plainText, err := html2text.Html2Text(body, *h2tSettings)
+				plainText, err := html2text.Html2Text(body, h2tSettings)
 				if err != nil {
 					log.Println(err)
 				}
@@ -211,10 +214,8 @@ func generateReport(settings *reportSettings) {
 		defer pprof.StopCPUProfile()
 	}
 
-	conf := html2text.NewSettings()
-
 	for _, file := range files {
-		pr := loadPage(file, &vdtr, &conf, settings.WordList)
+		pr := loadPage(file, &vdtr, settings.WordList)
 		pageReports[pr.URL] = pr
 		for url, _ := range pr.QueryKeys {
 			usedUrlQueryKeys[url] = pr.URL
@@ -243,13 +244,13 @@ func generateReport(settings *reportSettings) {
 		}, -1)
 	}
 
-	sQueryKeys, _ := file.AddSheet("query keys")
+	sQueryKeys, _ := file.AddSheet("Query keys")
 	for k, v := range usedUrlQueryKeys {
 		row = sQueryKeys.AddRow()
 		row.WriteSlice(&[]string{k, v}, -1)
 	}
 
-	sInvTags, _ := file.AddSheet("invalid tags")
+	sInvTags, _ := file.AddSheet("Invalid tags")
 	row = sInvTags.AddRow()
 	row.WriteSlice(&[]string{"reason", "tag", "attribute", "line",
 		"file name", "url"}, -1)
@@ -290,7 +291,7 @@ func generateReport(settings *reportSettings) {
 
 	sort.Strings(textUrlsArr)
 
-	sheetTextUrls, _ := file.AddSheet("text urls")
+	sheetTextUrls, _ := file.AddSheet("All URLs")
 
 	for _, u := range textUrlsArr {
 		row = sheetTextUrls.AddRow()
@@ -316,7 +317,7 @@ func generateReport(settings *reportSettings) {
 
 		}
 	}
-	sheetWordList, _ := file.AddSheet("wordlist")
+	sheetWordList, _ := file.AddSheet("Wordlist")
 
 	for u, _ := range words {
 		row = sheetWordList.AddRow()
@@ -324,7 +325,7 @@ func generateReport(settings *reportSettings) {
 	}
 
 	// form urls
-	sheetFormUrls, _ := file.AddSheet("form urls")
+	sheetFormUrls, _ := file.AddSheet("Form urls")
 
 	for pageUrl, cPage := range pageReports {
 		for _, form := range cPage.Forms {
@@ -335,7 +336,7 @@ func generateReport(settings *reportSettings) {
 		}
 	}
 
-	sheetIPs, _ := file.AddSheet("ips")
+	sheetIPs, _ := file.AddSheet("IP Addresses")
 	textIPs := map[string]string{}
 
 	for _, p := range pageReports {

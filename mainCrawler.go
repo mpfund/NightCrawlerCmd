@@ -28,7 +28,7 @@ type crawlSettings struct {
 }
 
 /* usage examples:
-nightcrawler.exe -url http://www.google.com
+websec.exe -url http://www.google.com
 => starts crawl from site http://www.google.com, only sites with same host (google.com)
 saves files to ./storage
 
