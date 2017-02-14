@@ -71,7 +71,7 @@ func mainHttpScan() {
 
 	fs.Parse(os.Args[2:])
 
-	tmpl, err := template.ParseFiles("./templates/httpscanresult.tmpl")
+	tmpl, err := template.ParseFiles("./template/httpscanresult.tmpl")
 	checkError(err)
 
 	settings := &appScannerSettings{}

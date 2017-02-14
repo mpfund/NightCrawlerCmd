@@ -67,7 +67,7 @@ func mainCrawler() {
 		log.Fatal("no url or url list provided.")
 	}
 
-	logf, err := os.OpenFile("nightcrawler.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	logf, err := os.OpenFile("websec.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}

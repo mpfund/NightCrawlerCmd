@@ -85,7 +85,7 @@ func readReport(settings *appSettings) {
 
 func scanDNS(settings *appSettings) {
 	ds := new(crawlbase.DNSScanner)
-	ds.LoadConfigFromFile("./resolv.conf")
+	ds.LoadConfigFromFile("./config/resolv.conf")
 	dnsResp := map[string][]string{}
 	if settings.SubdomainFile != "" {
 		data, err := ioutil.ReadFile(settings.SubdomainFile)
