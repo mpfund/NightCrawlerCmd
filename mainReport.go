@@ -1,13 +1,13 @@
 package main
 
 import (
+	"encoding/csv"
 	"flag"
 	"fmt"
 	"log"
 	"net/url"
 	"os"
 	"runtime/pprof"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -15,7 +15,6 @@ import (
 	"github.com/BlackEspresso/crawlbase"
 	"github.com/BlackEspresso/html2text"
 	"github.com/BlackEspresso/htmlcheck"
-	"github.com/tealeg/xlsx"
 )
 
 type reportSettings struct {
@@ -24,6 +23,7 @@ type reportSettings struct {
 	ProfileFolder string
 	Profile       bool
 	WordList      bool
+	TagsFiles     string
 }
 
 type PageReport struct {
@@ -52,9 +52,10 @@ func mainReport() {
 	fs := flag.NewFlagSet("report", flag.ExitOnError)
 
 	storagePathFlag := fs.String("storage-path", "./storage", "folder to store crawled files")
-	reportFile := fs.String("report", "report.xlsx", "generates report (xlsx-File)")
+	reportFile := fs.String("reportsfolder", "./report", "folder for report files (*.csv)")
 	profiling := fs.Bool("profiling", false, "enable profiling")
 	wordlist := fs.Bool("wordlist", false, "enable wordlist")
+	tagsFile := fs.String("tagsfile", "./config/tags.json", "path to tags file")
 
 	fs.Parse(os.Args[2:])
 
@@ -64,6 +65,7 @@ func mainReport() {
 	settings.StoragePath = *storagePathFlag
 	settings.Profile = *profiling
 	settings.WordList = *wordlist
+	settings.TagsFiles = *tagsFile
 
 	if *reportFile == "" {
 		log.Println("missing report file")
@@ -176,130 +178,53 @@ func bytesToStrings(arr [][]byte) []string {
 	return ret
 }
 
-/*
-type Cache struct {
-	dir map[string]interface{}
-}
-
-func (c *Cache) Get(name string) (interface{}, err) {
-	return dir[name]
-}
-
-func (c *Cache) StartLoadingCache(f func(string) interface{}) {
-
-}
-*/
-func generateReport(settings *reportSettings) {
-	startTime := time.Now()
-
-	file := xlsx.NewFile()
-	sheetUrls, err := file.AddSheet("Crawled Urls")
+func genReportCrawledUrls(settings *reportSettings, pageReports map[string]*PageReport) {
+	file, err := os.OpenFile(settings.ReportFile+"/crawledurls.csv", os.O_CREATE, 0655)
 	checkError(err)
+	defer file.Close()
 
-	files, err := crawlbase.GetPageInfoFiles(settings.StoragePath)
-	checkError(err)
+	csv := csv.NewWriter(file)
 
-	pageReports := map[string]*PageReport{}
-	usedUrlQueryKeys := map[string]string{}
-
-	vdtr := htmlcheck.Validator{}
-	err = vdtr.LoadTagsFromFile("tags.json")
-	checkError(err)
-
-	if settings.Profile {
-		f, err := os.Create(settings.ProfileFolder + "cpuprofile.pprof")
-		checkError(err)
-		pprof.StartCPUProfile(f)
-		defer f.Close()
-		defer pprof.StopCPUProfile()
-	}
-
-	for _, file := range files {
-		pr := loadPage(file, &vdtr, settings.WordList)
-		pageReports[pr.URL] = pr
-		for url, _ := range pr.QueryKeys {
-			usedUrlQueryKeys[url] = pr.URL
-		}
-	}
-
-	if settings.Profile {
-		log.Println("loaded content in ", time.Now().Sub(startTime))
-		writeHeap(settings.ProfileFolder, "0")
-	}
-
-	row := sheetUrls.AddRow()
-	row.WriteSlice(&[]string{"timestamp", "url", "Http code", "duration (ms)",
-		"redirect url", "error"}, -1)
+	csv.Write([]string{"timestamp", "url", "Http code", "duration (ms)",
+		"redirect url", "error"})
 
 	for _, info := range pageReports {
 		dur := info.RespDuration
-		row = sheetUrls.AddRow()
-		row.WriteSlice(&[]interface{}{
+		csv.Write([]string{
 			info.FileName,
 			info.URL,
-			info.StatusCode,
-			dur,
+			strconv.Itoa(info.StatusCode),
+			strconv.Itoa(dur),
 			info.Location,
 			info.Error,
-		}, -1)
+		})
 	}
 
-	sQueryKeys, _ := file.AddSheet("Query keys")
+	csv.Flush()
+	checkError(csv.Error())
+}
+
+func genReportQueryKeys(settings *reportSettings, usedUrlQueryKeys map[string]string) {
+	file, err := os.OpenFile(settings.ReportFile+"/querykeys.csv", os.O_CREATE, 0655)
+	checkError(err)
+	defer file.Close()
+
+	csv := csv.NewWriter(file)
+
 	for k, v := range usedUrlQueryKeys {
-		row = sQueryKeys.AddRow()
-		row.WriteSlice(&[]string{k, v}, -1)
+		csv.Write([]string{k, v})
 	}
+	csv.Flush()
+	checkError(csv.Error())
+}
 
-	sInvTags, _ := file.AddSheet("Invalid tags")
-	row = sInvTags.AddRow()
-	row.WriteSlice(&[]string{"reason", "tag", "attribute", "line",
-		"file name", "url"}, -1)
-	for _, info := range pageReports {
-		if len(info.InvalidTags) > 0 {
-			for _, inv := range info.InvalidTags {
-				row = sInvTags.AddRow()
-				reason := fmt.Sprint(inv.Reason)
-				line := fmt.Sprint(inv.TextPos.Line)
-				row.WriteSlice(&[]string{reason, inv.TagName, inv.AttributeName,
-					line, info.FileName, info.URL}, -1)
-			}
-		}
-	}
+func genReportWordlist(settings *reportSettings, pageReports map[string]*PageReport) {
+	file, err := os.OpenFile(settings.ReportFile+"/wordlist.csv", os.O_CREATE, 0655)
+	checkError(err)
+	defer file.Close()
 
-	// text urls
-	textUrls := map[string]string{}
+	csv := csv.NewWriter(file)
 
-	for _, p := range pageReports {
-		for _, u := range p.TextUrls {
-			if u == "" {
-				continue
-			}
-			textUrls[u] = p.URL
-		}
-	}
-
-	// removed crawled urls, keep only new, uncralwed ones
-	for _, k := range pageReports {
-		delete(textUrls, k.URL)
-	}
-
-	textUrlsArr := []string{}
-
-	for u, _ := range textUrls {
-		textUrlsArr = append(textUrlsArr, u)
-	}
-
-	sort.Strings(textUrlsArr)
-
-	sheetTextUrls, _ := file.AddSheet("All URLs")
-
-	for _, u := range textUrlsArr {
-		row = sheetTextUrls.AddRow()
-		row.WriteSlice(&[]string{u, textUrls[u]}, -1)
-	}
-
-	// wordlist
-	// text urls
 	words := map[string]*WordInfo{}
 
 	for _, p := range pageReports {
@@ -314,47 +239,104 @@ func generateReport(settings *reportSettings) {
 			} else {
 				w.Count += 1
 			}
-
 		}
 	}
-	sheetWordList, _ := file.AddSheet("Wordlist")
 
 	for u, _ := range words {
-		row = sheetWordList.AddRow()
-		row.WriteSlice(&[]interface{}{u, words[u].Count, words[u].Page}, -1)
+		csv.Write([]string{u, strconv.Itoa(words[u].Count), words[u].Page})
 	}
 
-	// form urls
-	sheetFormUrls, _ := file.AddSheet("Form urls")
+	csv.Flush()
+	checkError(csv.Error())
+}
+
+func genReportInvalidTags(settings *reportSettings, pageReports map[string]*PageReport) {
+	file, err := os.OpenFile(settings.ReportFile+"/invalidtags.csv", os.O_CREATE, 0655)
+	checkError(err)
+	defer file.Close()
+
+	csv := csv.NewWriter(file)
+
+	csv.Write([]string{"reason", "tag", "attribute", "line",
+		"file name", "url"})
+
+	for _, info := range pageReports {
+		if len(info.InvalidTags) > 0 {
+			for _, inv := range info.InvalidTags {
+				reason := fmt.Sprint(inv.Reason)
+				line := fmt.Sprint(inv.TextPos.Line)
+				csv.Write([]string{reason, inv.TagName, inv.AttributeName,
+					line, info.FileName, info.URL})
+			}
+		}
+	}
+
+	csv.Flush()
+	checkError(csv.Error())
+}
+
+func genReportFormsUrl(settings *reportSettings, pageReports map[string]*PageReport) {
+	file, err := os.OpenFile(settings.ReportFile+"/formtags.csv", os.O_CREATE, 0655)
+	checkError(err)
+	defer file.Close()
+
+	csv := csv.NewWriter(file)
 
 	for pageUrl, cPage := range pageReports {
 		for _, form := range cPage.Forms {
 			for _, input := range form.Inputs {
-				row = sheetFormUrls.AddRow()
-				row.WriteSlice(&[]interface{}{"", input.Name, input.Type, input.Value, pageUrl, form.Url, form.Method}, -1)
+				csv.Write([]string{"", input.Name, input.Type, input.Value,
+					pageUrl, form.Url, form.Method})
 			}
 		}
 	}
+	csv.Flush()
+	checkError(csv.Error())
+}
 
-	sheetIPs, _ := file.AddSheet("IP Addresses")
-	textIPs := map[string]string{}
+func loadData(settings *reportSettings) (map[string]*PageReport, map[string]string) {
+	pageReports := map[string]*PageReport{}
+	usedUrlQueryKeys := map[string]string{}
 
-	for _, p := range pageReports {
-		for _, u := range p.TextIPs {
-			if u == "" {
-				continue
-			}
-			textIPs[u] = p.URL
-		}
-	}
-
-	for ip, url := range textIPs {
-		row = sheetIPs.AddRow()
-		row.WriteSlice(&[]interface{}{ip, url}, -1)
-	}
-
-	err = file.Save(settings.ReportFile)
+	vdtr := htmlcheck.Validator{}
+	err := vdtr.LoadTagsFromFile(settings.TagsFiles)
 	checkError(err)
+
+	files, err := crawlbase.GetPageInfoFiles(settings.StoragePath)
+	checkError(err)
+
+	for _, file := range files {
+		pr := loadPage(file, &vdtr, settings.WordList)
+		pageReports[pr.URL] = pr
+		for url, _ := range pr.QueryKeys {
+			usedUrlQueryKeys[url] = pr.URL
+		}
+	}
+	return pageReports, usedUrlQueryKeys
+}
+
+func generateReport(settings *reportSettings) {
+	startTime := time.Now()
+
+	if settings.Profile {
+		f, err := os.Create(settings.ProfileFolder + "cpuprofile.pprof")
+		checkError(err)
+		pprof.StartCPUProfile(f)
+		defer f.Close()
+		defer pprof.StopCPUProfile()
+	}
+
+	pages, queryKeys := loadData(settings)
+
+	if settings.Profile {
+		log.Println("loaded content in ", time.Now().Sub(startTime))
+		writeHeap(settings.ProfileFolder, "0")
+	}
+
+	genReportCrawledUrls(settings, pages)
+	genReportQueryKeys(settings, queryKeys)
+	genReportInvalidTags(settings, pages)
+	genReportWordlist(settings, pages)
 
 	log.Println("report generated in", time.Now().Sub(startTime))
 }
