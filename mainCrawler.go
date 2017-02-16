@@ -28,17 +28,17 @@ type crawlSettings struct {
 }
 
 /* usage examples:
-websec.exe -url http://www.google.com
+ncrawler.exe -url http://www.google.com
 => starts crawl from site http://www.google.com, only sites with same host (google.com)
 saves files to ./storage
 
-nightcrawler.exe -report test.csv
+ncrawler.exe -report test.csv
 => just generates reports from prev. crawls files stored in ./storage. All urls.
 
-nightcrawler.exe -url http://www.google.com -report test.csv
+ncrawler.exe -url http://www.google.com -report test.csv
 => starts crawl http://www.google.com and generate report for url in the end
 
-nightcrawler.exe -url http://www.google.com -report test.csv -nocrawl
+ncrawler.exe -url http://www.google.com -report test.csv -nocrawl
 => just generate report for url
 
 */

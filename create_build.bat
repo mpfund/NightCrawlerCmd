@@ -1,7 +1,7 @@
-#rm -rf build
-#rmdir /s /q build
+rem rm -rf build
+rem rmdir /s /q build
 mkdir build
-xcopy .\websec.exe .\build\* /s/i
-xcopy .\config\* .\build\config\ /s/i
-xcopy .\wordlist\* .\build\wordlist\ /s/i
-xcopy .\template\* .\build\template\ /s/i
+xcopy ".\ncrawler.exe" ".\build\*" /y
+xcopy .\config\* .\build\config\ /s/y
+xcopy .\wordlist\* .\build\wordlist\ /s/y
+xcopy .\template\* .\build\template\ /s/y

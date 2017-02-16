@@ -26,7 +26,7 @@ func (i *stringslice) Set(value string) error {
 }
 
 func mainHttpCurl() {
-	fs := flag.NewFlagSet("httpcurl", flag.ExitOnError)
+	fs := flag.NewFlagSet("curl", flag.ExitOnError)
 
 	headers := stringslice{}
 
