@@ -2,10 +2,11 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/fatih/color"
 )
 
 func mainHttpServer() {
@@ -15,8 +16,8 @@ func mainHttpServer() {
 	folder := fs.String("folder", "./", "root folder")
 
 	fs.Parse(os.Args[2:])
-	fmt.Println("Listening on " + *listenTo + " serving folder " + *folder)
-	fmt.Println("Press CTRL+C to exit")
+	color.Green("Listening on " + *listenTo + " serving folder " + *folder)
+	color.Green("Press CTRL+C to exit")
 
 	log.Fatal(http.ListenAndServe(*listenTo, http.FileServer(http.Dir(*folder))))
 }

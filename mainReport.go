@@ -15,6 +15,7 @@ import (
 	"github.com/BlackEspresso/crawlbase"
 	"github.com/BlackEspresso/html2text"
 	"github.com/BlackEspresso/htmlcheck"
+	"github.com/fatih/color"
 )
 
 type reportSettings struct {
@@ -26,7 +27,7 @@ type reportSettings struct {
 	TagsFiles     string
 }
 
-type PageReport struct {
+type pageReport struct {
 	URL               string
 	FileName          string
 	RespDuration      int
@@ -43,7 +44,7 @@ type PageReport struct {
 	Forms             []crawlbase.Form
 }
 
-type WordInfo struct {
+type wordInfo struct {
 	Count int
 	Page  string
 }
@@ -68,14 +69,14 @@ func mainReport() {
 	settings.TagsFiles = *tagsFile
 
 	if *reportFile == "" {
-		log.Println("missing report file")
+		color.Red("missing report file")
 		return
 	}
 
 	generateReport(settings)
 }
 
-func filterInvalidHtmlByType(validations []*htmlcheck.ValidationError,
+func filterInvalidHTMLByType(validations []*htmlcheck.ValidationError,
 	reason htmlcheck.ErrorReason, max int) []*htmlcheck.ValidationError {
 
 	errors := []*htmlcheck.ValidationError{}
@@ -92,11 +93,11 @@ func filterInvalidHtmlByType(validations []*htmlcheck.ValidationError,
 	return errors
 }
 
-func loadPage(file string, vdtr *htmlcheck.Validator, doWordlist bool) *PageReport {
+func loadPage(file string, vdtr *htmlcheck.Validator, doWordlist bool) *pageReport {
 	page, err := crawlbase.LoadPage(file, true)
 	checkError(err)
 
-	pr := &PageReport{}
+	pr := &pageReport{}
 	pr.RespDuration = page.RespDuration
 	pr.FileName = strconv.Itoa(page.CrawlTime)
 	pr.URL = page.URL
@@ -140,21 +141,21 @@ func loadPage(file string, vdtr *htmlcheck.Validator, doWordlist bool) *PageRepo
 		}*/
 	}
 
-	pUrl, err := url.Parse(page.URL)
+	pURL, err := url.Parse(page.URL)
 	if err != nil {
-		log.Println("url invalid, skipping", page.URL)
+		color.Red("url invalid, skipping", page.URL)
 		return nil
 	}
 
 	if page.Response != nil {
-		isRedirect, location := crawlbase.LocationFromPage(page, pUrl)
+		isRedirect, location := crawlbase.LocationFromPage(page, pURL)
 		if isRedirect {
 			pr.Location = location
 		}
 	}
 
 	pr.QueryKeys = map[string]bool{}
-	for v, _ := range pUrl.Query() {
+	for v := range pURL.Query() {
 		pr.QueryKeys[v] = true
 	}
 
@@ -178,7 +179,7 @@ func bytesToStrings(arr [][]byte) []string {
 	return ret
 }
 
-func genReportCrawledUrls(settings *reportSettings, pageReports map[string]*PageReport) {
+func genReportCrawledUrls(settings *reportSettings, pageReports map[string]*pageReport) {
 	file, err := os.OpenFile(settings.ReportFile+"/crawledurls.csv", os.O_CREATE, 0655)
 	checkError(err)
 	defer file.Close()
@@ -204,28 +205,28 @@ func genReportCrawledUrls(settings *reportSettings, pageReports map[string]*Page
 	checkError(csv.Error())
 }
 
-func genReportQueryKeys(settings *reportSettings, usedUrlQueryKeys map[string]string) {
+func genReportQueryKeys(settings *reportSettings, usedURLQueryKeys map[string]string) {
 	file, err := os.OpenFile(settings.ReportFile+"/querykeys.csv", os.O_CREATE, 0655)
 	checkError(err)
 	defer file.Close()
 
 	csv := csv.NewWriter(file)
 
-	for k, v := range usedUrlQueryKeys {
+	for k, v := range usedURLQueryKeys {
 		csv.Write([]string{k, v})
 	}
 	csv.Flush()
 	checkError(csv.Error())
 }
 
-func genReportWordlist(settings *reportSettings, pageReports map[string]*PageReport) {
+func genReportWordlist(settings *reportSettings, pageReports map[string]*pageReport) {
 	file, err := os.OpenFile(settings.ReportFile+"/wordlist.csv", os.O_CREATE, 0655)
 	checkError(err)
 	defer file.Close()
 
 	csv := csv.NewWriter(file)
 
-	words := map[string]*WordInfo{}
+	words := map[string]*wordInfo{}
 
 	for _, p := range pageReports {
 		for _, u := range p.Words {
@@ -235,14 +236,14 @@ func genReportWordlist(settings *reportSettings, pageReports map[string]*PageRep
 			word := strings.ToLower(string(u))
 			w, ok := words[word]
 			if !ok {
-				words[word] = &WordInfo{1, p.URL}
+				words[word] = &wordInfo{1, p.URL}
 			} else {
-				w.Count += 1
+				w.Count++
 			}
 		}
 	}
 
-	for u, _ := range words {
+	for u := range words {
 		csv.Write([]string{u, strconv.Itoa(words[u].Count), words[u].Page})
 	}
 
@@ -250,7 +251,7 @@ func genReportWordlist(settings *reportSettings, pageReports map[string]*PageRep
 	checkError(csv.Error())
 }
 
-func genReportInvalidTags(settings *reportSettings, pageReports map[string]*PageReport) {
+func genReportInvalidTags(settings *reportSettings, pageReports map[string]*pageReport) {
 	file, err := os.OpenFile(settings.ReportFile+"/invalidtags.csv", os.O_CREATE, 0655)
 	checkError(err)
 	defer file.Close()
@@ -275,18 +276,18 @@ func genReportInvalidTags(settings *reportSettings, pageReports map[string]*Page
 	checkError(csv.Error())
 }
 
-func genReportFormsUrl(settings *reportSettings, pageReports map[string]*PageReport) {
+func genReportFormsURL(settings *reportSettings, pageReports map[string]*pageReport) {
 	file, err := os.OpenFile(settings.ReportFile+"/formtags.csv", os.O_CREATE, 0655)
 	checkError(err)
 	defer file.Close()
 
 	csv := csv.NewWriter(file)
 
-	for pageUrl, cPage := range pageReports {
+	for pageURL, cPage := range pageReports {
 		for _, form := range cPage.Forms {
 			for _, input := range form.Inputs {
 				csv.Write([]string{"", input.Name, input.Type, input.Value,
-					pageUrl, form.Url, form.Method})
+					pageURL, form.Url, form.Method})
 			}
 		}
 	}
@@ -294,9 +295,9 @@ func genReportFormsUrl(settings *reportSettings, pageReports map[string]*PageRep
 	checkError(csv.Error())
 }
 
-func loadData(settings *reportSettings) (map[string]*PageReport, map[string]string) {
-	pageReports := map[string]*PageReport{}
-	usedUrlQueryKeys := map[string]string{}
+func loadData(settings *reportSettings) (map[string]*pageReport, map[string]string) {
+	pageReports := map[string]*pageReport{}
+	usedURLQueryKeys := map[string]string{}
 
 	vdtr := htmlcheck.Validator{}
 	err := vdtr.LoadTagsFromFile(settings.TagsFiles)
@@ -308,11 +309,11 @@ func loadData(settings *reportSettings) (map[string]*PageReport, map[string]stri
 	for _, file := range files {
 		pr := loadPage(file, &vdtr, settings.WordList)
 		pageReports[pr.URL] = pr
-		for url, _ := range pr.QueryKeys {
-			usedUrlQueryKeys[url] = pr.URL
+		for url := range pr.QueryKeys {
+			usedURLQueryKeys[url] = pr.URL
 		}
 	}
-	return pageReports, usedUrlQueryKeys
+	return pageReports, usedURLQueryKeys
 }
 
 func generateReport(settings *reportSettings) {
@@ -329,7 +330,7 @@ func generateReport(settings *reportSettings) {
 	pages, queryKeys := loadData(settings)
 
 	if settings.Profile {
-		log.Println("loaded content in ", time.Now().Sub(startTime))
+		color.Yellow("loaded content in ", time.Now().Sub(startTime))
 		writeHeap(settings.ProfileFolder, "0")
 	}
 
@@ -338,5 +339,5 @@ func generateReport(settings *reportSettings) {
 	genReportInvalidTags(settings, pages)
 	genReportWordlist(settings, pages)
 
-	log.Println("report generated in", time.Now().Sub(startTime))
+	color.Green("report generated in", time.Now().Sub(startTime))
 }

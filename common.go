@@ -5,9 +5,8 @@ import (
 )
 
 func checkError(e error) {
-	if e != nil && DebugMode {
+	if e != nil && debugMode {
 		panic(e)
-		return
 	}
 	if e != nil {
 		log.Fatal(e)

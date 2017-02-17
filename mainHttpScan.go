@@ -26,7 +26,7 @@ type appScannerSettings struct {
 	Scheme          string
 	VectorFile      string
 	URL             string
-	ScanHttpHeaders bool
+	ScanHTTPHeaders bool
 	ReportTemplate  *template.Template
 	outputFolder    string
 }
@@ -34,30 +34,30 @@ type appScannerSettings struct {
 type appScan struct {
 	BaseResponse *http.Response
 	BaseRequest  *http.Request
-	Vectors      []*AttackVector
+	Vectors      []*attackVector
 }
 
-type AttackVector struct {
+type attackVector struct {
 	Vector       string
 	Test         string
-	SqlInjection bool
+	SQLInjection bool
 	Section      string
 }
 
-type ScanResult struct {
-	AttackVector       *AttackVector
+type scanResult struct {
+	AttackVector       *attackVector
 	Duration           int
 	Request            *crawlbase.PageRequest
 	Response           *crawlbase.PageResponse
 	Error              string
 	Found              bool
 	ResponseBodyLength int
-	Url                string
+	URL                string
 	ParamTarget        string
 	FilePath           string
 }
 
-func mainHttpScan() {
+func mainHTTPScan() {
 	fs := flag.NewFlagSet("httpscan", flag.ExitOnError)
 
 	inputFile := fs.String("input", "", "input file")
@@ -82,27 +82,27 @@ func mainHttpScan() {
 	settings.Scheme = *schemeFlag
 	settings.VectorFile = *vectorFile
 	settings.URL = *urlFlag
-	settings.ScanHttpHeaders = *scanHeaderFlag
+	settings.ScanHTTPHeaders = *scanHeaderFlag
 	settings.outputFolder = *outputFolder
 
 	scan := new(appScan)
 
 	req := getRequest(settings)
 	scan.BaseRequest = req
-	baseResult := doRequest(settings, scan.BaseRequest, &AttackVector{}, "BaseRequest")
+	baseResult := doRequest(settings, scan.BaseRequest, &attackVector{}, "BaseRequest")
 
 	data, err := ioutil.ReadFile(settings.VectorFile)
 	checkError(err)
 	err = json.Unmarshal(data, &scan.Vectors)
 	checkError(err)
 
-	results := []*ScanResult{}
+	results := []*scanResult{}
 	results = append(results, baseResult)
-	results = append(results, scanUrl(settings, scan)...)
+	results = append(results, scanURL(settings, scan)...)
 	generateScanReport(results, settings)
 }
 
-func generateScanReport(results []*ScanResult, settings *appScannerSettings) {
+func generateScanReport(results []*scanResult, settings *appScannerSettings) {
 	file, err := os.OpenFile(settings.ReportFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0666)
 	checkError(err)
 	defer file.Close()
@@ -111,11 +111,11 @@ func generateScanReport(results []*ScanResult, settings *appScannerSettings) {
 	checkError(err)
 }
 
-func scanUrl(settings *appScannerSettings, scan *appScan) []*ScanResult {
+func scanURL(settings *appScannerSettings, scan *appScan) []*scanResult {
 	bQueries := scan.BaseRequest.URL.Query()
-	results := []*ScanResult{}
+	results := []*scanResult{}
 
-	for key, _ := range bQueries {
+	for key := range bQueries {
 		for _, vec := range scan.Vectors {
 			req := copyRequest(scan.BaseRequest)
 
@@ -129,8 +129,8 @@ func scanUrl(settings *appScannerSettings, scan *appScan) []*ScanResult {
 		}
 	}
 
-	if settings.ScanHttpHeaders {
-		for key, _ := range scan.BaseRequest.Header {
+	if settings.ScanHTTPHeaders {
+		for key := range scan.BaseRequest.Header {
 			for _, vec := range scan.Vectors {
 				req := copyRequest(scan.BaseRequest)
 				header := req.Header.Get(key)
@@ -143,7 +143,7 @@ func scanUrl(settings *appScannerSettings, scan *appScan) []*ScanResult {
 
 	segments := getPathSegements(scan.BaseRequest.URL.EscapedPath())
 
-	for i, _ := range segments {
+	for i := range segments {
 		if segments[i] == "" {
 			continue
 		}
@@ -157,7 +157,7 @@ func scanUrl(settings *appScannerSettings, scan *appScan) []*ScanResult {
 			reqSegments := getPathSegements(req.URL.EscapedPath())
 			reqSegments[i] = vec.Vector
 			segs := strings.Join(reqSegments, "/")
-			req.URL, _ = newUrlPath(req.URL, segs)
+			req.URL, _ = newURLPath(req.URL, segs)
 			result := doRequest(settings, req, vec, "urlsegment "+segments[i])
 			results = append(results, result)
 		}
@@ -169,14 +169,14 @@ func getPathSegements(path string) []string {
 	return strings.Split(path, "/")
 }
 
-func newUrlPath(u *url.URL, path string) (*url.URL, error) {
-	nUrlText := u.Scheme + "://" + u.Host + path + "?" + u.RawQuery +
+func newURLPath(u *url.URL, path string) (*url.URL, error) {
+	nURLText := u.Scheme + "://" + u.Host + path + "?" + u.RawQuery +
 		"#" + u.Fragment
-	return u.Parse(nUrlText)
+	return u.Parse(nURLText)
 }
 
 func doRequest(settings *appScannerSettings, req *http.Request,
-	vector *AttackVector, paramTarget string) *ScanResult {
+	vector *attackVector, paramTarget string) *scanResult {
 	startTime := time.Now()
 	resp, err := http.DefaultClient.Do(req)
 	dur := time.Now().Sub(startTime)
@@ -214,9 +214,9 @@ func copyRequest(req *http.Request) *http.Request {
 	return newreq
 }
 
-func requestToResult(resp *http.Response, vec *AttackVector, filePath string,
-	duration time.Duration, err error, found bool, body []byte, paramTarget string) *ScanResult {
-	result := new(ScanResult)
+func requestToResult(resp *http.Response, vec *attackVector, filePath string,
+	duration time.Duration, err error, found bool, body []byte, paramTarget string) *scanResult {
+	result := new(scanResult)
 	result.Duration = int(duration.Seconds() * 1000)
 	result.AttackVector = vec
 	if err != nil {
@@ -235,7 +235,7 @@ func requestToResult(resp *http.Response, vec *AttackVector, filePath string,
 		result.ParamTarget = paramTarget
 		result.ResponseBodyLength = len(body)
 		result.FilePath = filePath
-		result.Url = resp.Request.URL.String()
+		result.URL = resp.Request.URL.String()
 	}
 	return result
 }

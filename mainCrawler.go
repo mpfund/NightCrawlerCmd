@@ -12,16 +12,16 @@ import (
 	"net/url"
 	"os"
 	"runtime/pprof"
-	"time"
 
 	"github.com/BlackEspresso/crawlbase"
+	"github.com/fatih/color"
 )
 
-var fileStorageUrl string = ""
+var fileStorageURL string
 
 type crawlSettings struct {
-	Url           *url.URL
-	FileStoreUrl  string
+	URL           *url.URL
+	FileStoreURL  string
 	WaitTime      int
 	MaxPages      int
 	StorageFolder string
@@ -43,7 +43,7 @@ ncrawler.exe -url http://www.google.com -report test.csv -nocrawl
 
 */
 
-var DebugMode bool = false
+var debugMode = false
 
 func mainCrawler() {
 	fs := flag.NewFlagSet("crawler", flag.ExitOnError)
@@ -60,17 +60,17 @@ func mainCrawler() {
 	noNewLinks := fs.Bool("no-new-links", false,
 		"dont crawl hrefs links. Use with url-list for example.")
 
-	DebugMode = *debugFlag
+	debugMode = *debugFlag
 
 	fs.Parse(os.Args[2:])
 
 	if *urlFlag == "" && *urlList == "" {
-		log.Fatal("no url or url list provided.")
+		color.Red("no url or url list provided.")
 	}
 
-	logf, err := os.OpenFile("websec.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	logf, err := os.OpenFile("crawler.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatalf("error opening file: %v", err)
+		color.Red("error opening file: %v", err)
 	}
 
 	log.SetOutput(io.MultiWriter(logf, os.Stdout))
@@ -96,14 +96,14 @@ func mainCrawler() {
 
 	log.Println("Loaded pages: ", pagesLoaded)
 
-	var baseUrl *url.URL = nil
+	var baseURL *url.URL
 
 	if *urlFlag != "" {
 		// parse url & remove all out of scope urls
-		baseUrl, err = url.Parse(*urlFlag)
+		baseURL, err = url.Parse(*urlFlag)
 		checkError(err)
-		cw.RemoveLinksNotSameHost(baseUrl)
-		settings.Url = baseUrl
+		cw.RemoveLinksNotSameHost(baseURL)
+		settings.URL = baseURL
 	}
 
 	if *noNewLinks {
@@ -117,25 +117,25 @@ func mainCrawler() {
 		data, err := ioutil.ReadFile(*urlList)
 		checkError(err)
 		lines := SplitByLines(string(data))
-		newUrls := []string{}
+		newURLs := []string{}
 		for _, l := range lines {
-			if baseUrl != nil {
+			if baseURL != nil {
 				// use relative & absolute urls
-				absUrl := crawlbase.ToAbsUrl(baseUrl, l)
-				newUrls = append(newUrls, absUrl)
+				absURL := crawlbase.ToAbsUrl(baseURL, l)
+				newURLs = append(newURLs, absURL)
 			} else {
 				// add only absolute ones
-				newUrl, err := url.Parse(l)
+				newURL, err := url.Parse(l)
 				checkError(err)
-				if newUrl.IsAbs() {
-					newUrls = append(newUrls, l)
+				if newURL.IsAbs() {
+					newURLs = append(newURLs, l)
 				}
 			}
 		}
 
-		cw.AddAllLinks(newUrls)
-		if baseUrl != nil {
-			cw.RemoveLinksNotSameHost(baseUrl)
+		cw.AddAllLinks(newURLs)
+		if baseURL != nil {
+			cw.RemoveLinksNotSameHost(baseURL)
 		}
 	}
 
@@ -147,44 +147,10 @@ func mainCrawler() {
 		return url, nil
 	}
 
-	if baseUrl != nil {
-		cw.FetchSites(baseUrl)
+	if baseURL != nil {
+		cw.FetchSites(baseURL)
 	} else if *urlList != "" {
 		cw.FetchSites(nil)
-	}
-}
-
-func saveCrawlHttp(crawledUri string, fileName string, content []byte) {
-	params := map[string]string{"meta": crawledUri}
-
-	req, err := newfileUploadRequest(fileStorageUrl, params, "upload", fileName, content)
-	if err != nil {
-		log.Println("cant create file store request ")
-		checkError(err)
-	}
-
-	c := http.Client{}
-	c.Timeout = time.Duration(200) * time.Second
-
-	uploadSuccess := false
-	for retries := 0; retries < 3; retries++ {
-		cresp, err := c.Do(req)
-		if err != nil {
-			log.Println("file store", err)
-			continue
-		}
-		if cresp.StatusCode != 200 {
-			log.Println("file store response ", cresp.StatusCode)
-			continue
-		}
-		uploadSuccess = true
-		break
-	}
-
-	if !uploadSuccess {
-		log.Println("error while saving")
-		log.Println(fileName, len(content), fileStorageUrl)
-		log.Fatal("exiting")
 	}
 }
 
@@ -215,7 +181,7 @@ func writeHeap(path, num string) {
 
 func logPrint(err error) {
 	if err != nil {
-		log.Print(err)
+		color.Red(err.Error())
 	}
 }
 
