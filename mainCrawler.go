@@ -53,11 +53,12 @@ func mainCrawler() {
 	waitFlag := fs.Int("wait", 1000, "delay, in milliseconds")
 	maxPagesFlag := fs.Int("max-pages", -1, "max pages to crawl, -1 for infinite")
 	//fs.String("storageType", "file", "type of storage. (http,file,ftp)")
-	storagePathFlag := fs.String("storage-path", "./storage", "folder to store crawled files")
-	clearStorageFlag := fs.Bool("clear-storage", false, "delete all storage files")
+	storagePathFlag := fs.String("storage-path", "./storage",
+		"folder to store crawled files")
 	debugFlag := fs.Bool("debug", false, "enable debugging")
-	urlList := fs.String("urllist", "", "path to list with urls")
-	noNewLinks := fs.Bool("no-new-links", false, "dont crawl hrefs links.")
+	urlList := fs.String("url-list", "", "path to a list with urls")
+	noNewLinks := fs.Bool("no-new-links", false,
+		"dont crawl hrefs links. Use with url-list for example.")
 
 	DebugMode = *debugFlag
 
@@ -151,11 +152,6 @@ func mainCrawler() {
 	} else if *urlList != "" {
 		cw.FetchSites(nil)
 	}
-
-	if *clearStorageFlag {
-		log.Println("delete storage files")
-		clearStorage(&settings)
-	}
 }
 
 func saveCrawlHttp(crawledUri string, fileName string, content []byte) {
@@ -201,14 +197,6 @@ func exists(path string) (bool, error) {
 		return false, nil
 	}
 	return true, err
-}
-
-func clearStorage(settings *crawlSettings) {
-	files, err := crawlbase.GetPageInfoFiles(settings.StorageFolder)
-	checkError(err)
-	for _, f := range files {
-		os.Remove(f)
-	}
 }
 
 func writeHeap(path, num string) {
