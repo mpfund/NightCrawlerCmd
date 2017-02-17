@@ -52,7 +52,7 @@ type wordInfo struct {
 func mainReport() {
 	fs := flag.NewFlagSet("report", flag.ExitOnError)
 
-	storagePathFlag := fs.String("storage-path", "./storage", "folder to store crawled files")
+	storagePathFlag := fs.String("storage-path", "./storage", "folder with crawled files from 'crawler'")
 	reportFile := fs.String("reportsfolder", "./report", "folder for report files (*.csv)")
 	profiling := fs.Bool("profiling", false, "enable profiling")
 	wordlist := fs.Bool("wordlist", false, "enable wordlist")
@@ -185,6 +185,7 @@ func genReportCrawledUrls(settings *reportSettings, pageReports map[string]*page
 	defer file.Close()
 
 	csv := csv.NewWriter(file)
+	csv.Comma = ';'
 
 	csv.Write([]string{"timestamp", "url", "Http code", "duration (ms)",
 		"redirect url", "error"})
@@ -211,6 +212,7 @@ func genReportQueryKeys(settings *reportSettings, usedURLQueryKeys map[string]st
 	defer file.Close()
 
 	csv := csv.NewWriter(file)
+	csv.Comma = ';'
 
 	for k, v := range usedURLQueryKeys {
 		csv.Write([]string{k, v})
@@ -225,6 +227,7 @@ func genReportWordlist(settings *reportSettings, pageReports map[string]*pageRep
 	defer file.Close()
 
 	csv := csv.NewWriter(file)
+	csv.Comma = ';'
 
 	words := map[string]*wordInfo{}
 
@@ -257,6 +260,7 @@ func genReportInvalidTags(settings *reportSettings, pageReports map[string]*page
 	defer file.Close()
 
 	csv := csv.NewWriter(file)
+	csv.Comma = ';'
 
 	csv.Write([]string{"reason", "tag", "attribute", "line",
 		"file name", "url"})
@@ -282,6 +286,7 @@ func genReportFormsURL(settings *reportSettings, pageReports map[string]*pageRep
 	defer file.Close()
 
 	csv := csv.NewWriter(file)
+	csv.Comma = ';'
 
 	for pageURL, cPage := range pageReports {
 		for _, form := range cPage.Forms {
@@ -339,5 +344,19 @@ func generateReport(settings *reportSettings) {
 	genReportInvalidTags(settings, pages)
 	genReportWordlist(settings, pages)
 
-	color.Green("report generated in", time.Now().Sub(startTime))
+	color.Green("report generated in %s", time.Now().Sub(startTime))
+}
+
+func writeHeap(path, num string) {
+	folder := path
+	_, err := os.Stat(folder)
+	if err != nil {
+		err = os.Mkdir(folder, 0777)
+		checkError(err)
+	}
+
+	f, err := os.Create(folder + "/heap_" + num + ".pprof")
+	checkError(err)
+	pprof.WriteHeapProfile(f)
+	f.Close()
 }

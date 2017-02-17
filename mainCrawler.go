@@ -1,17 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"flag"
 	"io"
 	"io/ioutil"
 	"log"
-	"mime/multipart"
-	"net/http"
 	"net/url"
 	"os"
-	"runtime/pprof"
 
 	"github.com/BlackEspresso/crawlbase"
 	"github.com/fatih/color"
@@ -25,6 +21,7 @@ type crawlSettings struct {
 	WaitTime      int
 	MaxPages      int
 	StorageFolder string
+	URLRegEx      string
 }
 
 /* usage examples:
@@ -80,6 +77,7 @@ func mainCrawler() {
 	settings.WaitTime = *waitFlag
 	settings.MaxPages = *maxPagesFlag
 	settings.StorageFolder = *storagePathFlag
+	//settings.URLRegEx = *urlRegEx
 
 	cw := crawlbase.NewCrawler()
 	cw.WaitBetweenRequests = settings.WaitTime
@@ -163,48 +161,4 @@ func exists(path string) (bool, error) {
 		return false, nil
 	}
 	return true, err
-}
-
-func writeHeap(path, num string) {
-	folder := path
-	_, err := os.Stat(folder)
-	if err != nil {
-		err = os.Mkdir(folder, 0777)
-		checkError(err)
-	}
-
-	f, err := os.Create(folder + "/heap_" + num + ".pprof")
-	checkError(err)
-	pprof.WriteHeapProfile(f)
-	f.Close()
-}
-
-func logPrint(err error) {
-	if err != nil {
-		color.Red(err.Error())
-	}
-}
-
-func newfileUploadRequest(uri string, params map[string]string, paramName string, fName string,
-	fileContent []byte) (*http.Request, error) {
-
-	body := new(bytes.Buffer)
-	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile(paramName, fName)
-	if err != nil {
-		return nil, err
-	}
-	part.Write(fileContent)
-
-	for key, val := range params {
-		_ = writer.WriteField(key, val)
-	}
-	err = writer.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	req, _ := http.NewRequest("POST", uri, body)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-	return req, err
 }
