@@ -55,7 +55,7 @@ func mainReport() {
 	storagePathFlag := fs.String("storage-path", "./storage", "folder with crawled files from 'crawler'")
 	reportFile := fs.String("reportsfolder", "./report", "folder for report files (*.csv)")
 	profiling := fs.Bool("profiling", false, "enable profiling")
-	wordlist := fs.Bool("wordlist", false, "enable wordlist")
+	wordlist := fs.Bool("wordlist", false, "generates a wordlist from crawled pages")
 	tagsFile := fs.String("tagsfile", "./config/tags.json", "path to tags file")
 
 	fs.Parse(os.Args[2:])
@@ -180,7 +180,10 @@ func bytesToStrings(arr [][]byte) []string {
 }
 
 func genReportCrawledUrls(settings *reportSettings, pageReports map[string]*pageReport) {
-	file, err := os.OpenFile(settings.ReportFile+"/crawledurls.csv", os.O_CREATE, 0655)
+	path := settings.ReportFile + "/crawledurls.csv"
+	err := removeIfExists(path)
+	checkError(err)
+	file, err := os.OpenFile(path, os.O_CREATE, 0655)
 	checkError(err)
 	defer file.Close()
 
@@ -207,7 +210,10 @@ func genReportCrawledUrls(settings *reportSettings, pageReports map[string]*page
 }
 
 func genReportQueryKeys(settings *reportSettings, usedURLQueryKeys map[string]string) {
-	file, err := os.OpenFile(settings.ReportFile+"/querykeys.csv", os.O_CREATE, 0655)
+	path := settings.ReportFile + "/querykeys.csv"
+	err := removeIfExists(path)
+	checkError(err)
+	file, err := os.OpenFile(path, os.O_CREATE, 0655)
 	checkError(err)
 	defer file.Close()
 
@@ -222,12 +228,9 @@ func genReportQueryKeys(settings *reportSettings, usedURLQueryKeys map[string]st
 }
 
 func genReportWordlist(settings *reportSettings, pageReports map[string]*pageReport) {
-	file, err := os.OpenFile(settings.ReportFile+"/wordlist.csv", os.O_CREATE, 0655)
+	path := settings.ReportFile + "/wordlist.csv"
+	err := removeIfExists(path)
 	checkError(err)
-	defer file.Close()
-
-	csv := csv.NewWriter(file)
-	csv.Comma = ';'
 
 	words := map[string]*wordInfo{}
 
@@ -246,6 +249,17 @@ func genReportWordlist(settings *reportSettings, pageReports map[string]*pageRep
 		}
 	}
 
+	if len(words) == 0 {
+		return
+	}
+
+	file, err := os.OpenFile(path, os.O_CREATE, 0655)
+	checkError(err)
+	defer file.Close()
+
+	csv := csv.NewWriter(file)
+	csv.Comma = ';'
+
 	for u := range words {
 		csv.Write([]string{u, strconv.Itoa(words[u].Count), words[u].Page})
 	}
@@ -255,7 +269,10 @@ func genReportWordlist(settings *reportSettings, pageReports map[string]*pageRep
 }
 
 func genReportInvalidTags(settings *reportSettings, pageReports map[string]*pageReport) {
-	file, err := os.OpenFile(settings.ReportFile+"/invalidtags.csv", os.O_CREATE, 0655)
+	path := settings.ReportFile + "/invalidtags.csv"
+	err := removeIfExists(path)
+	checkError(err)
+	file, err := os.OpenFile(path, os.O_CREATE, 0655)
 	checkError(err)
 	defer file.Close()
 
@@ -281,7 +298,10 @@ func genReportInvalidTags(settings *reportSettings, pageReports map[string]*page
 }
 
 func genReportFormsURL(settings *reportSettings, pageReports map[string]*pageReport) {
-	file, err := os.OpenFile(settings.ReportFile+"/formtags.csv", os.O_CREATE, 0655)
+	path := settings.ReportFile + "/formtags.csv"
+	err := removeIfExists(path)
+	checkError(err)
+	file, err := os.OpenFile(path, os.O_CREATE, 0655)
 	checkError(err)
 	defer file.Close()
 
@@ -343,8 +363,17 @@ func generateReport(settings *reportSettings) {
 	genReportQueryKeys(settings, queryKeys)
 	genReportInvalidTags(settings, pages)
 	genReportWordlist(settings, pages)
+	genReportFormsURL(settings, pages)
 
 	color.Green("report generated in %s", time.Now().Sub(startTime))
+}
+
+func removeIfExists(path string) error {
+	ok, _ := exists(path)
+	if ok {
+		return os.Remove(path)
+	}
+	return nil
 }
 
 func writeHeap(path, num string) {

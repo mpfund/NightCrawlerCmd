@@ -210,7 +210,7 @@
   },
   {
     "Name": "script",
-    "Attrs": [ "type", "src", "language", "charset", "async","defer","nonce" ],
+    "Attrs": [ "type", "src", "language", "charset", "async","defer","nonce","crossorigin" ],
     "IsSelfClosing": false
   },
   {
@@ -271,7 +271,11 @@
   },
   {
     "Name": "input",
-    "Attrs": [ "class", "maxlength", "name", "min","step", "placeholder", "required", "size", "type", "value", "alt", "src", "autocomplete", "tabindex", "checked", "disabled", "onclick", "style", "title", "aria-autocomplete", "spellcheck", "autofocus","max","readonly","autocorrect"],
+    "Attrs": [ "class", "maxlength", "name", "min","step", "placeholder",
+      "required", "size", "type", "value", "alt", "src", "autocomplete",
+      "tabindex", "checked", "disabled", "onclick", "style", "title",
+      "aria-autocomplete", "spellcheck", "autofocus","max","readonly",
+      "autocorrect","inputmode"],
     "IsSelfClosing": true
   },
   {
@@ -428,7 +432,7 @@
   {
     "Name": "link",
     "Attrs": [ "href", "media", "sizes", "title", "type", "rel",
-    "content", "hreflang", "itemprop","alt" ],
+    "content", "hreflang", "itemprop","alt","crossorigin" ],
     "IsSelfClosing": true
   },
   {
@@ -636,6 +640,21 @@
   {
     "Name": "canvas",
     "Attrs": ["height","width" ],
+    "IsSelfClosing": false
+  },
+   {
+    "Name": "output",
+    "Attrs": ["name","for","from" ],
+    "IsSelfClosing": false
+  },
+     {
+    "Name": "template",
+    "Attrs": [ ],
+    "IsSelfClosing": false
+  },
+ {
+    "Name": "picture",
+    "Attrs": [ ],
     "IsSelfClosing": false
   }
 ]
