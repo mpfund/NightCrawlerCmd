@@ -1,0 +1,20 @@
+<component name="libraryTable">
+  <library name="GOPATH &lt;ncrawler&gt;">
+    <CLASSES>
+      <root url="file://C:/gopath/src/gopkg.in" />
+      <root url="file://C:/gopath/src/github.com" />
+      <root url="file://C:/gopath/src/golang.org" />
+      <root url="file://C:/gopath/src/sourcegraph.com" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://C:/gopath/src/gopkg.in" />
+      <root url="file://C:/gopath/src/github.com" />
+      <root url="file://C:/gopath/src/golang.org" />
+      <root url="file://C:/gopath/src/sourcegraph.com" />
+    </SOURCES>
+    <excluded>
+      <root url="file://$PROJECT_DIR$" />
+    </excluded>
+  </library>
+</component>

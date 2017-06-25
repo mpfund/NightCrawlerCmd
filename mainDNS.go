@@ -122,14 +122,14 @@ func dnsReportExcel(dnsResp map[string][]string, settings *appSettings) {
 	sheet, err := file.AddSheet("dns")
 	checkError(err)
 
-	for subdomain, entries := range dnsResp {
+	for subDomain, entries := range dnsResp {
 		row := sheet.AddRow()
 		if len(entries) > 0 {
 			for _, entry := range entries {
 				row.WriteSlice(&[]string{"found", entry}, -1)
 			}
 		} else {
-			row.WriteSlice(&[]string{"not found", subdomain + "." + settings.Domain + ".\n"}, -1)
+			row.WriteSlice(&[]string{"not found", subDomain + "." + settings.Domain + ".\n"}, -1)
 		}
 	}
 	err = file.Save(settings.ReportFile)
@@ -138,14 +138,14 @@ func dnsReportExcel(dnsResp map[string][]string, settings *appSettings) {
 
 func dnsReport(dnsResp map[string][]string, settings *appSettings) {
 	buffer := bytes.Buffer{}
-	for subdomain, entries := range dnsResp {
+	for subDomain, entries := range dnsResp {
 		if len(entries) > 0 {
 			for _, entry := range entries {
 				buffer.WriteString(entry + "\n")
 				fmt.Println(entry)
 			}
 		} else {
-			buffer.WriteString(subdomain + "." + settings.Domain + ".\n")
+			buffer.WriteString(subDomain + "." + settings.Domain + ".\n")
 		}
 	}
 
