@@ -2,15 +2,16 @@ package main
 
 import (
 	"flag"
-	"github.com/BlackEspresso/crawlbase"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 )
 
-func mainWordlist() {
+func mainWordList() {
 	fs := flag.NewFlagSet("wordlist", flag.ExitOnError)
 
 	source := fs.String("source", "", "files to read e.g. folder/*.txt")
@@ -28,11 +29,19 @@ func createWordList(source, target string) {
 	checkError(err)
 	defer file.Close()
 
+	keys := []string{}
 	for k := range wordMap {
-		file.Write([]byte(strings.ToLower(k)))
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, v := range keys {
+		file.Write([]byte(strings.ToLower(v)))
 		file.Write([]byte("\n"))
 	}
 }
+
+var regFindWordLower *regexp.Regexp = regexp.MustCompile("[a-zA-Z][a-z]{3,}")
 
 func findAllWords(source string) map[string]bool {
 	files, err := filepath.Glob(source)
@@ -44,10 +53,18 @@ func findAllWords(source string) map[string]bool {
 		if err != nil {
 			log.Println(err)
 		}
-		words := crawlbase.GetWordListFromText(fileContent, -1)
-		for _, word := range words {
-			wordMap[string(word)] = true
+
+		allWords := -1
+		wordsLower := regFindWordLower.FindAll(fileContent, allWords)
+
+		addWords := func(words [][]byte) {
+			for _, word := range words {
+				wordStr := strings.ToLower(string(word))
+				wordMap[wordStr] = true
+			}
 		}
+
+		addWords(wordsLower)
 	}
 	return wordMap
 }

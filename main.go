@@ -29,7 +29,7 @@ func main() {
 	} else if args[1] == "httpserver" {
 		mainHttpServer()
 	} else if args[1] == "wordlist" {
-		mainWordlist()
+		mainWordList()
 	} else {
 		fmt.Println("tool " + args[1] + " not found")
 	}
