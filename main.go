@@ -9,7 +9,7 @@ func main() {
 	args := os.Args
 	if len(args) == 1 {
 		fmt.Println("missing tool command")
-		fmt.Println("dns, crawler, report, portscan, curl, httpscan, fuzzer, httpserver")
+		fmt.Println("dns, crawler, report, portscan, curl, httpscan, fuzzer, httpserver, wordlist")
 		return
 	}
 	if args[1] == "dns" {
@@ -28,6 +28,8 @@ func main() {
 		mainFuzzer()
 	} else if args[1] == "httpserver" {
 		mainHttpServer()
+	} else if args[1] == "wordlist" {
+		mainWordlist()
 	} else {
 		fmt.Println("tool " + args[1] + " not found")
 	}
