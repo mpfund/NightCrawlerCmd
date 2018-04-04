@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
-	"html"
 	"io/ioutil"
 	"math/rand"
-	"net/url"
 	"os"
 )
 
@@ -24,7 +22,7 @@ func mainFuzzer() {
 	fs := flag.NewFlagSet("fuzzer", flag.ExitOnError)
 
 	input := fs.String("input", "fuzzinginput.json", "fuzzer blocks input file")
-	output := fs.String("output", "output.html", "output file")
+	output := fs.String("output", "output.txt", "output file")
 	fs.Parse(os.Args[2:])
 
 	inputContent, err := ioutil.ReadFile(*input)
@@ -37,17 +35,18 @@ func mainFuzzer() {
 	ioutil.WriteFile(*output, outputContent, 0666)
 }
 
-func UrlEncode(text string) []byte {
+/*func UrlEncode(text string) []byte {
 	return []byte(url.QueryEscape(text))
-}
+}*/
 
 func NoEncode(text string) []byte {
 	return []byte(text)
 }
 
+/*
 func HtmlEncode(text string) []byte {
 	return []byte(html.EscapeString(text))
-}
+}*/
 
 func genFuzzingOutput(fi *FuzzingInput, encodings []Enc) []byte {
 	b := bytes.Buffer{}

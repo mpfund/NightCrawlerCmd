@@ -4,7 +4,6 @@ import (
 	"errors"
 	"flag"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -12,8 +11,6 @@ import (
 	"github.com/BlackEspresso/crawlbase"
 	"github.com/fatih/color"
 )
-
-var fileStorageURL string
 
 type crawlSettings struct {
 	URL           *url.URL
@@ -112,10 +109,9 @@ func mainCrawler() {
 	}
 
 	if *urlList != "" {
-		data, err := ioutil.ReadFile(*urlList)
+		lines, err := crawlbase.ReadWordlist(*urlList)
 		checkError(err)
-		lines := SplitByLines(string(data))
-		newURLs := []string{}
+		var newURLs []string
 		for _, l := range lines {
 			if baseURL != nil {
 				// use relative & absolute urls

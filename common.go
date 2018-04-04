@@ -12,3 +12,11 @@ func checkError(e error) {
 		log.Fatal(e)
 	}
 }
+
+var verboseLevel = 0
+
+func logVerbose(level int, v ...interface{}) {
+	if level <= verboseLevel {
+		log.Println(v)
+	}
+}

@@ -181,6 +181,7 @@ game
 games
 gate
 gateway
+gems
 gis
 git
 gitlab
@@ -242,6 +243,7 @@ ipv4
 irc
 it
 jabber
+jenkins
 jira
 job
 jobs
@@ -351,6 +353,7 @@ news
 newsletter
 nl
 noc
+npm
 ns
 ns0
 ns01
@@ -410,6 +413,7 @@ press
 preview
 privacy
 pro
+product
 project
 projects
 promo
@@ -577,6 +581,7 @@ web5
 webchat
 webconf
 webdisk
+webhooks
 webmail
 webmail2
 whm

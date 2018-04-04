@@ -19,7 +19,7 @@ type appSettings struct {
 	LogFile       string
 	UseResume     bool
 	History       map[string]bool
-	DnsTypeNumber uint16
+	DNSTypeNumber uint16
 	ReportFile    string
 }
 
@@ -42,12 +42,12 @@ func mainDNS() {
 	settings.LogFile = *logFile
 	settings.UseResume = *resume
 	settings.History = map[string]bool{}
-	settings.DnsTypeNumber = uint16(*dnsTypeNr)
+	settings.DNSTypeNumber = uint16(*dnsTypeNr)
 	settings.ReportFile = *outputFile
 
 	if *dnsType != "" {
 		var ok bool
-		settings.DnsTypeNumber, ok = crawlbase.DnsTypesByName[*dnsType]
+		settings.DNSTypeNumber, ok = crawlbase.DnsTypesByName[*dnsType]
 		if !ok {
 			log.Fatal("dnsType " + *dnsType + " not found")
 			return
@@ -88,13 +88,12 @@ func scanDNS(settings *appSettings) {
 	ds.LoadConfigFromFile("./config/resolv.conf")
 	dnsResp := map[string][]string{}
 	if settings.SubdomainFile != "" {
-		data, err := ioutil.ReadFile(settings.SubdomainFile)
+		lines, err := crawlbase.ReadWordlist(settings.SubdomainFile)
 		checkError(err)
-		lines := SplitByLines(string(data))
 		lines = filterLines(lines, settings)
-		dnsResp = ds.ScanDNS(lines, settings.Domain, settings.DnsTypeNumber)
+		dnsResp = ds.ScanDNS(lines, settings.Domain, settings.DNSTypeNumber)
 	} else {
-		resp, _ := ds.ResolveDNS(settings.Domain, settings.DnsTypeNumber)
+		resp, _ := ds.ResolveDNS(settings.Domain, settings.DNSTypeNumber)
 		dnsResp[settings.Domain] = resp
 	}
 
@@ -106,7 +105,7 @@ func scanDNS(settings *appSettings) {
 }
 
 func filterLines(lines []string, settings *appSettings) []string {
-	filteredLines := []string{}
+	var filteredLines []string
 	for _, line := range lines {
 		name := line + "." + settings.Domain + "."
 		_, inHistory := settings.History[name]
@@ -155,14 +154,4 @@ func dnsReport(dnsResp map[string][]string, settings *appSettings) {
 	}
 
 	logf.Write(buffer.Bytes())
-}
-
-func SplitByLines(text string) []string {
-	lines := strings.Split(text, "\n")
-	cleanLines := make([]string, len(lines))
-	for _, k := range lines {
-		line := strings.Trim(k, "\n\r")
-		cleanLines = append(cleanLines, line)
-	}
-	return cleanLines
 }
