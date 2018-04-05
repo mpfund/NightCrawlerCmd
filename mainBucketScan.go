@@ -2,12 +2,14 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/BlackEspresso/crawlbase"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -18,27 +20,7 @@ type BucketInfo struct {
 	AccessDenied int
 }
 
-var buckets = []*BucketInfo{{
-	Name: "aws",
-	Urls: []string{"s3.amazonaws.com",
-		"s3.eu-west-1.amazonaws.com",
-		"s3.us-east-2.amazonaws.com",
-		"s3.us-west-2.amazonaws.com",
-	},
-	NoSuchBucket: 404,
-	AccessDenied: 403,
-}, {
-	Name:         "azure",
-	Urls:         []string{"blob.core.windows.net/?comp=list"},
-	NoSuchBucket: 404,
-	AccessDenied: 403,
-}, {
-	Name:         "dc",
-	Urls:         []string{"nyc3.digitaloceanspaces.com"},
-	NoSuchBucket: 404,
-	AccessDenied: 403,
-},
-}
+var buckets []*BucketInfo
 
 type settingsBucketScan struct {
 	Suffix     string
@@ -46,6 +28,7 @@ type settingsBucketScan struct {
 	WordList   string
 	Splitter   string
 	Url        string
+	Filter     string
 	Bucket     *BucketInfo
 	Verbose    int
 	Delay      int
@@ -60,7 +43,23 @@ func mainBucketScan() {
 	verbose := fs.Int("verbose", 0, "verbose level")
 	url := fs.String("url", "", "overwrite url suffix of bucket type")
 	delay := fs.Int("delay", 100, "delay in milliseconds")
+	filter := fs.String("filter", "", "filter bucket urls (not wordlist items)")
+	configFile := fs.String("config", "./config/bucketscan.json", "path to config file")
 	fs.Parse(os.Args[2:])
+
+	if *configFile != "" {
+		configData, err := ioutil.ReadFile(*configFile)
+		checkError(err)
+		err = json.Unmarshal(configData, &buckets)
+		checkError(err)
+	} else {
+		buckets = []*BucketInfo{
+			{Name: "aws",
+				Urls:         []string{"s3.amazonaws.com"},
+				NoSuchBucket: 404,
+				AccessDenied: 403,
+			}}
+	}
 
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	verboseLevel = *verbose
@@ -72,6 +71,7 @@ func mainBucketScan() {
 		Splitter:   *splitter,
 		Url:        *url,
 		Delay:      *delay,
+		Filter:     *filter,
 	}
 
 	for _, b := range buckets {
@@ -95,8 +95,14 @@ func mainBucketScan() {
 func scanBucket(settings *settingsBucketScan) {
 	lines, err := crawlbase.ReadWordlist(settings.WordList)
 	checkError(err)
+	useFilter := settings.Filter != ""
 
 	for _, urlSuffix := range settings.Bucket.Urls {
+		if useFilter && !strings.Contains(urlSuffix, settings.Filter) {
+			logVerbose(1, "skipping", urlSuffix)
+			continue
+		}
+
 		for _, line := range lines {
 			time.Sleep(time.Duration(settings.Delay) * time.Millisecond)
 			url := "https://" + line + settings.Splitter + settings.Suffix + "." + urlSuffix
