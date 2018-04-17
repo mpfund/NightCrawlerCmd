@@ -10,7 +10,7 @@ func main() {
 	if len(args) == 1 {
 		fmt.Println("NCrawler V0.1.1")
 		fmt.Println("missing tool command")
-		fmt.Println("dns, crawler, report, portscan, curl, httpscan, fuzzer, httpserver, wordlist, bucketscan")
+		fmt.Println("dns, crawler, report, portscan, curl, httpscan, fuzzer, httpserver, bucketscan")
 		return
 	}
 	if args[1] == "dns" {
@@ -21,7 +21,7 @@ func main() {
 		mainReport()
 	} else if args[1] == "portscan" {
 		mainPortScan()
-	} else if args[1] == "curl" {
+	} else if args[1] == "httppipe" {
 		mainHttpCurl()
 	} else if args[1] == "httpscan" {
 		mainHTTPScan()

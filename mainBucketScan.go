@@ -23,7 +23,7 @@ type BucketInfo struct {
 var buckets []*BucketInfo
 
 type settingsBucketScan struct {
-	Suffix     string
+	Prefix     string
 	BucketType string
 	WordList   string
 	Splitter   string
@@ -36,7 +36,7 @@ type settingsBucketScan struct {
 
 func mainBucketScan() {
 	fs := flag.NewFlagSet("bucketscan", flag.ExitOnError)
-	suffix := fs.String("suffix", "", "suffix or domain name like google.com")
+	prefix := fs.String("prefix", "{w}", "prefix or domain name like {w}.google-com")
 	bucketTyp := fs.String("provider", "aws", "bucket type like s3 (digital ocean, google,..)")
 	wordList := fs.String("wordlist", "", "path to word list for sub domain scan")
 	splitter := fs.String("splitter", ".", "splitter character between suffix and domain")
@@ -65,7 +65,7 @@ func mainBucketScan() {
 	verboseLevel = *verbose
 
 	settings := settingsBucketScan{
-		Suffix:     *suffix,
+		Prefix:     *prefix,
 		BucketType: *bucketTyp,
 		WordList:   *wordList,
 		Splitter:   *splitter,
@@ -105,7 +105,9 @@ func scanBucket(settings *settingsBucketScan) {
 
 		for _, line := range lines {
 			time.Sleep(time.Duration(settings.Delay) * time.Millisecond)
-			url := "https://" + line + settings.Splitter + settings.Suffix + "." + urlSuffix
+			prefix := strings.Replace(settings.Prefix,"{w}",line,1)
+
+			url := "https://" + prefix + "." + urlSuffix
 			resp, err := http.Get(url)
 			if err != nil {
 				logVerbose(1, url, err)

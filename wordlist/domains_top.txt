@@ -408,6 +408,7 @@ pop3
 portal
 post
 pr
+prelaunch
 preprod
 press
 preview
@@ -515,6 +516,7 @@ test
 test1
 test2
 test3
+testapp
 testing
 thumbs
 ticket
@@ -529,6 +531,7 @@ training
 transit
 translate
 travel
+try
 ts
 tv
 tw

@@ -44,10 +44,10 @@ func mainCrawler() {
 
 	urlFlag := fs.String("url", "", "url, e.g. http://www.google.com")
 	//urlRegEx := flag.String("regex", "", "only crawl links using this regex")
-	waitFlag := fs.Int("wait", 1000, "delay, in milliseconds")
+	waitFlag := fs.Int("wait", 500, "delay, in milliseconds")
 	maxPagesFlag := fs.Int("max-pages", -1, "max pages to crawl, -1 for infinite")
 	//fs.String("storageType", "file", "type of storage. (http,file,ftp)")
-	storagePathFlag := fs.String("storage-path", "./storage",
+	storagePathFlag := fs.String("storage-path", "",
 		"folder to store crawled files")
 	debugFlag := fs.Bool("debug", false, "enable debugging")
 	urlList := fs.String("url-list", "", "path to a list with urls")
@@ -81,8 +81,9 @@ func mainCrawler() {
 	cw.StorageFolder = settings.StorageFolder
 	cw.NoNewLinks = *noNewLinks
 
+
 	// resume
-	if doesExists, _ := exists(settings.StorageFolder); !doesExists {
+	if doesExists, _ := exists(settings.StorageFolder); !doesExists && settings.StorageFolder!="" {
 		os.Mkdir(settings.StorageFolder, 0777)
 	}
 

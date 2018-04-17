@@ -1,0 +1,10 @@
+.php
+.php3
+.js
+.html
+.pl
+.shtm
+.shtml
+.cgi
+.asp
+.core

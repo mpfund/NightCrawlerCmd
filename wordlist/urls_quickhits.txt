@@ -2364,3 +2364,4 @@ zeroclipboard.swf
 zm_cms/spaw2/dialogs/dialog.php
 zone-h.php
 ~install/
+/nodes_modules/

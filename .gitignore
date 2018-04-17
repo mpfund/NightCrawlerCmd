@@ -12,3 +12,4 @@ build/
 *.exe
 WebSec
 *.html
+.idea/*
