@@ -3,37 +3,34 @@ package main
 import (
 	"errors"
 	"flag"
-	"io"
 	"log"
 	"net/url"
 	"os"
 
 	"github.com/BlackEspresso/crawlbase"
 	"github.com/fatih/color"
+	"strings"
 )
 
 type crawlSettings struct {
-	URL           *url.URL
-	FileStoreURL  string
-	WaitTime      int
-	MaxPages      int
-	StorageFolder string
-	URLRegEx      string
+	URL             *url.URL
+	FileStoreURL    string
+	WaitTime        int
+	MaxPages        int
+	StorageFolder   string
+	URLRegEx        string
+	followLinks     []string
+	dontFollowLinks []string
+	NoNewLinks      bool
 }
 
 /* usage examples:
-ncrawler.exe -url http://www.google.com
+ncrawler.exe -url http://www.google.com -storage ./storage
 => starts crawl from site http://www.google.com, only sites with same host (google.com)
 saves files to ./storage
 
-ncrawler.exe -report test.csv
+ncrawler.exe -report test.csv -storage ./storage
 => just generates reports from prev. crawls files stored in ./storage. All urls.
-
-ncrawler.exe -url http://www.google.com -report test.csv
-=> starts crawl http://www.google.com and generate report for url in the end
-
-ncrawler.exe -url http://www.google.com -report test.csv -nocrawl
-=> just generate report for url
 
 */
 
@@ -53,6 +50,11 @@ func mainCrawler() {
 	urlList := fs.String("url-list", "", "path to a list with urls")
 	noNewLinks := fs.Bool("no-new-links", false,
 		"dont crawl hrefs links. Use with url-list for example.")
+	scopeToDomain := fs.Bool("scoped-to-domain", true, "scope the crawler to the domain")
+
+	var followLinks, followLinksNot arrayFlags
+	fs.Var(&followLinks, "links-follow", "some test flag")
+	fs.Var(&followLinksNot, "links-not-follow", "some test flag")
 
 	debugMode = *debugFlag
 
@@ -62,28 +64,28 @@ func mainCrawler() {
 		color.Red("no url or url list provided.")
 	}
 
-	logf, err := os.OpenFile("crawler.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		color.Red("error opening file: %v", err)
-	}
-
-	log.SetOutput(io.MultiWriter(logf, os.Stdout))
-	defer logf.Close()
+	log.SetOutput(os.Stdout)
 
 	settings := crawlSettings{}
 	settings.WaitTime = *waitFlag
 	settings.MaxPages = *maxPagesFlag
 	settings.StorageFolder = *storagePathFlag
-	//settings.URLRegEx = *urlRegEx
+	settings.followLinks = followLinks
+	settings.dontFollowLinks = followLinksNot
+	settings.NoNewLinks = *noNewLinks
 
 	cw := crawlbase.NewCrawler()
 	cw.WaitBetweenRequests = settings.WaitTime
 	cw.StorageFolder = settings.StorageFolder
-	cw.NoNewLinks = *noNewLinks
+	cw.ScopeToDomain = *scopeToDomain
+	cw.BeforeCrawlFn = func(url string) (string, error) {
+		return BeforeCrawlFn(&settings, cw, url)
+	}
+	cw.AfterCrawlFn = func(p *crawlbase.Page, err error) ([]string, error) {
+		return AfterCrawlFn(&settings, p, err)
+	}
 
-
-	// resume
-	if doesExists, _ := exists(settings.StorageFolder); !doesExists && settings.StorageFolder!="" {
+	if doesExists, _ := exists(settings.StorageFolder); !doesExists && settings.StorageFolder != "" {
 		os.Mkdir(settings.StorageFolder, 0777)
 	}
 
@@ -134,19 +136,74 @@ func mainCrawler() {
 		}
 	}
 
-	cw.BeforeCrawlFn = func(url string) (string, error) {
-		if settings.MaxPages >= 0 && cw.PageCount >= uint64(settings.MaxPages) {
-			log.Println("crawled ", cw.PageCount, "link(s), max pages reached.")
-			return "", errors.New("max pages reached")
-		}
-		return url, nil
-	}
-
 	if baseURL != nil {
 		cw.FetchSites(baseURL)
 	} else if *urlList != "" {
 		cw.FetchSites(nil)
 	}
+}
+
+func BeforeCrawlFn(settings *crawlSettings, cw *crawlbase.Crawler, url string) (string, error) {
+	if settings.MaxPages >= 0 && cw.PageCount >= uint64(settings.MaxPages) {
+		log.Println("crawled ", cw.PageCount, "link(s), max pages reached.")
+		return "", errors.New("max pages reached")
+	}
+	return url, nil
+}
+
+func AfterCrawlFn(settings *crawlSettings, page *crawlbase.Page, err error) ([]string, error) {
+	if page == nil {
+		return nil, err
+	}
+
+	var crawlLinks []string
+
+	isRedirect := page.Response.StatusCode >= 300 && page.Response.StatusCode < 308
+	if settings.NoNewLinks {
+		if isRedirect {
+			val, ok := page.Response.Header["Location"]
+			if ok && len(val) > 0 {
+				crawlLinks = append(crawlLinks, val[0])
+			}
+		}
+		return crawlLinks, nil
+	}
+
+	hasFollowFilter := len(settings.followLinks) > 0
+	hasDontFollowFilter := len(settings.dontFollowLinks) > 0
+
+	if !hasFollowFilter && !hasDontFollowFilter {
+		return page.RespInfo.Hrefs, err
+	}
+
+	for _, link := range page.RespInfo.Hrefs {
+		matchFollow := hasFollowFilter && containsAllText(settings.followLinks, link)
+		matchDontFollow := hasDontFollowFilter && containsAnyText(settings.dontFollowLinks, link)
+
+		if matchFollow && !matchDontFollow {
+			crawlLinks = append(crawlLinks, link)
+		}
+	}
+
+	return crawlLinks, err
+}
+
+func containsAnyText(testStrings []string, text string) bool {
+	for _, tester := range testStrings {
+		if strings.Contains(text, tester) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsAllText(testStrings []string, text string) bool {
+	for _, tester := range testStrings {
+		if !strings.Contains(text, tester) {
+			return false
+		}
+	}
+	return true
 }
 
 func exists(path string) (bool, error) {
@@ -158,4 +215,16 @@ func exists(path string) (bool, error) {
 		return false, nil
 	}
 	return true, err
+}
+
+type arrayFlags []string
+
+func (i *arrayFlags) String() string {
+	// change this, this is just can example to satisfy the interface
+	return "my string representation"
+}
+
+func (i *arrayFlags) Set(value string) error {
+	*i = append(*i, strings.TrimSpace(value))
+	return nil
 }

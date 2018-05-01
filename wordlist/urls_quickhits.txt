@@ -387,6 +387,7 @@
 .zeus.sock
 .zfs/
 .zip
+/nodes_modules/
 0.htpasswd
 0.php
 1.htaccess
@@ -1365,6 +1366,7 @@ index.xml
 info.json
 info.php
 info.txt
+infrastructure/logging.yaml
 install
 INSTALL
 INSTALL.html
@@ -1497,6 +1499,10 @@ log_status_order.txt
 logexpcus.txt
 logfile
 logfiles
+logging.json
+logging.log
+logging.txt
+logging.yaml
 login.php
 logins.txt
 logs
@@ -2364,4 +2370,3 @@ zeroclipboard.swf
 zm_cms/spaw2/dialogs/dialog.php
 zone-h.php
 ~install/
-/nodes_modules/

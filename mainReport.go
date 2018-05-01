@@ -79,7 +79,7 @@ func mainReport() {
 func filterInvalidHTMLByType(validations []*htmlcheck.ValidationError,
 	reason htmlcheck.ErrorReason, max int) []*htmlcheck.ValidationError {
 
-	errors := []*htmlcheck.ValidationError{}
+	var errors []*htmlcheck.ValidationError
 	c := 0
 	for _, k := range validations {
 		if k.Reason == reason {
@@ -203,6 +203,37 @@ func genReportCrawledUrls(settings *reportSettings, pageReports map[string]*page
 			info.Location,
 			info.Error,
 		})
+	}
+
+	csv.Flush()
+	checkError(csv.Error())
+}
+
+func genReportAllUrls(settings *reportSettings, pageReports map[string]*pageReport) {
+	path := settings.ReportFile + "/allUrls.csv"
+	err := removeIfExists(path)
+	checkError(err)
+	file, err := os.OpenFile(path, os.O_CREATE, 0655)
+	checkError(err)
+	defer file.Close()
+
+	csv := csv.NewWriter(file)
+	csv.Comma = ';'
+
+	csv.Write([]string{"url"})
+
+	urls := map[string]bool{}
+
+	for _, info := range pageReports {
+		for url := range info.Hrefs {
+			if ok, _ := urls[url]; !ok {
+				urls[url] = true
+			}
+		}
+	}
+
+	for url := range urls {
+		csv.Write([]string{url})
 	}
 
 	csv.Flush()
@@ -364,6 +395,7 @@ func generateReport(settings *reportSettings) {
 	genReportInvalidTags(settings, pages)
 	genReportWordlist(settings, pages)
 	genReportFormsURL(settings, pages)
+	genReportAllUrls(settings, pages)
 
 	color.Green("report generated in %s", time.Now().Sub(startTime))
 }

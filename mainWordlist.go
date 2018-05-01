@@ -11,60 +11,216 @@ import (
 	"strings"
 )
 
+type MutatorFunc func(string) []string
+
+var regFindWordLower = regexp.MustCompile(`[a-zA-Z][a-z]{3,}`)
+var regFindUrlsRel = regexp.MustCompile(`[a-zA-Z0-9]*[\/\\][a-zA-Z0-9-\._\\]{4,}`)
+var regFindUrlsAbs = regexp.MustCompile(`[a-zA-Z]{2,}://[\w:-\\-\.\/]+`)
+var regFindStringsOnly = regexp.MustCompile(`\"([[:print:]]*?)\"`)
+var regFindStringsOnly2 = regexp.MustCompile(`\'([[:print:]]*?)\'`)
+
+var mutators = map[string]MutatorFunc{}
+
+type settingsWordlist struct {
+	Template     string
+	Input        string
+	Output       string
+	Extractor    string
+	MutatorName  string
+	ShowFileName bool
+}
+
 func mainWordList() {
 	fs := flag.NewFlagSet("wordlist", flag.ExitOnError)
 
-	source := fs.String("source", "", "files to read e.g. folder/*.txt")
+	mutatorName := fs.String("mutator", "", "mutator")
+	template := fs.String("template", "", "template file")
+	source := fs.String("input", "", "files to read e.g. folder/*.txt")
 	output := fs.String("output", "wordlist.txt", "wordlist output")
+	extractor := fs.String("extractor", "word",
+		"how to extract words from text: none,word,keep_url,string,")
+	showFileName := fs.Bool("show-file-name", false, "")
 
 	fs.Parse(os.Args[2:])
 
-	createWordList(*source, *output)
+	settings := settingsWordlist{
+		Template:     *template,
+		MutatorName:  *mutatorName,
+		Extractor:    *extractor,
+		Input:        *source,
+		Output:       *output,
+		ShowFileName: *showFileName,
+	}
+
+	mutators["username"] = usernameMutator
+
+	createWordList(&settings)
 }
 
-func createWordList(source, target string) {
-	wordMap := findAllWords(source)
-	os.Remove(target) // skip error
-	file, err := os.OpenFile(target, os.O_RDWR|os.O_CREATE, 0660)
+func createWordList(settings *settingsWordlist) {
+	wordMap := findAllWords(settings)
+	os.Remove(settings.Output)
+	file, err := os.OpenFile(settings.Output, os.O_RDWR|os.O_CREATE, 0660)
 	checkError(err)
 	defer file.Close()
 
-	keys := []string{}
-	for k := range wordMap {
-		keys = append(keys, k)
+	var templates = []string{"<word>"}
+	if settings.Template != "" {
+		templateContent, err := ioutil.ReadFile(settings.Template)
+		templates = strings.Split(string(templateContent), "\n")
+		checkError(err)
 	}
-	sort.Strings(keys)
 
-	for _, v := range keys {
-		file.Write([]byte(strings.ToLower(v)))
-		file.Write([]byte("\n"))
+	newWordMap := permute(wordMap, settings.MutatorName)
+
+	finalWords := map[string]bool{}
+
+	for _, template := range templates {
+		for v := range newWordMap {
+			templated := strings.Replace(template, "<word>", v, 1)
+			k := strings.ToLower(strings.TrimSpace(templated))
+			finalWords[k] = true
+		}
+	}
+
+	writeToFile(finalWords, file)
+}
+
+func writeToFile(words map[string]bool, file *os.File) {
+	var wordList []string
+	for k := range words {
+		wordList = append(wordList, k)
+	}
+	sort.Strings(wordList)
+
+	for _, word := range wordList {
+		if strings.TrimSpace(word) == "" {
+			continue
+		}
+		file.Write([]byte(word + "\n"))
 	}
 }
 
-var regFindWordLower *regexp.Regexp = regexp.MustCompile("[a-zA-Z][a-z]{3,}")
+func permute(wordMap map[string]bool, permuter string) map[string]bool {
+	if permuter == "" {
+		return wordMap
+	}
+	permuteFunc := mutators[permuter]
 
-func findAllWords(source string) map[string]bool {
-	files, err := filepath.Glob(source)
+	newWords := map[string]bool{}
+
+	for k := range wordMap {
+		words := permuteFunc(k)
+		for _, word := range words {
+			newWords[word] = true
+		}
+	}
+
+	return newWords
+}
+
+var usernameRegEx = regexp.MustCompile("\\w+")
+
+func usernameMutator(line string) []string {
+	words := usernameRegEx.FindAllString(line, -1)
+	var newUsernames []string
+
+	addWithSeperator := func(sep string) {
+		allWords := strings.Join(words, sep)
+		newUsernames = append(newUsernames, allWords)
+	}
+
+	addWithSeperator("")
+	addWithSeperator("_")
+	addWithSeperator(".")
+	addWithSeperator("-")
+
+	for i := range words {
+		prev := words[:i]
+		middle := words[i]
+		last := words[i+1:]
+		if len(prev) == 0 && len(last) == 0 {
+			continue
+		}
+		username := strings.Join(prev, "") + string([]rune(middle)[0]) + strings.Join(last, "")
+		newUsernames = append(newUsernames, username)
+		username = strings.Join(prev, "") + strings.Join(last, "")
+		newUsernames = append(newUsernames, username)
+	}
+	return newUsernames
+}
+
+func findAllWords(settings *settingsWordlist) map[string]bool {
+	var files []string
+	err := filepath.Walk(settings.Input, func(path string, info os.FileInfo, err error) error {
+		files = append(files, path)
+		return nil
+	})
+
 	checkError(err)
 	wordMap := map[string]bool{}
 
-	for _, file := range files {
-		fileContent, err := ioutil.ReadFile(file)
-		if err != nil {
-			log.Println(err)
-		}
-
-		allWords := -1
-		wordsLower := regFindWordLower.FindAll(fileContent, allWords)
-
-		addWords := func(words [][]byte) {
-			for _, word := range words {
-				wordStr := strings.ToLower(string(word))
+	addWords := func(words []string, file string) {
+		for _, word := range words {
+			wordStr := strings.ToLower(word)
+			wordStr = strings.TrimSpace(wordStr)
+			if file != "" {
+				wordMap[wordStr+" ["+file+"]"] = true
+			} else {
 				wordMap[wordStr] = true
 			}
 		}
+	}
 
-		addWords(wordsLower)
+	for _, file := range files {
+		stat, err := os.Stat(file)
+		logError(err)
+		if stat.IsDir() {
+			continue
+		}
+
+		fileContent, err := ioutil.ReadFile(file)
+		logError(err)
+		textContent := string(fileContent)
+
+		var words []string
+
+		switch settings.Extractor {
+		case "keep_url":
+			words = regFindUrlsRel.FindAllString(textContent, -1)
+			words2 := regFindUrlsAbs.FindAllString(textContent, -1)
+			words = append(words, words2...)
+			break
+		case "word":
+			words = regFindWordLower.FindAllString(textContent, -1)
+			break
+		case "string":
+			words = regFindStringsOnly.FindAllString(textContent, -1)
+			words2 := regFindStringsOnly2.FindAllString(textContent, -1)
+			words = append(words, words2...)
+			wordsCleared := make([]string, len(words))
+			for _, t := range words {
+				wordsCleared = append(wordsCleared, strings.Trim(t, "\"'"))
+			}
+			words = wordsCleared
+			break
+		case "none":
+			words = strings.Split(textContent, "\n")
+			break
+		}
+
+		if settings.ShowFileName {
+			addWords(words, file)
+		} else {
+			addWords(words, "")
+		}
+
 	}
 	return wordMap
+}
+
+func logError(err error) {
+	if err != nil {
+		log.Println(err)
+	}
 }

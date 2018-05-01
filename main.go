@@ -8,9 +8,9 @@ import (
 func main() {
 	args := os.Args
 	if len(args) == 1 {
-		fmt.Println("NCrawler V0.1.1")
+		fmt.Println("NCrawler V0.1.2")
 		fmt.Println("missing tool command")
-		fmt.Println("dns, crawler, report, portscan, curl, httpscan, fuzzer, httpserver, bucketscan")
+		fmt.Println("dns, crawler, report, portscan, wordlist, curl, httpscan, fuzzer, httpserver, bucketscan")
 		return
 	}
 	if args[1] == "dns" {

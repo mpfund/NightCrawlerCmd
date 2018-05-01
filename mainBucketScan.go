@@ -36,7 +36,7 @@ type settingsBucketScan struct {
 
 func mainBucketScan() {
 	fs := flag.NewFlagSet("bucketscan", flag.ExitOnError)
-	prefix := fs.String("prefix", "{w}", "prefix or domain name like {w}.google-com")
+	prefix := fs.String("prefix", "{w}", "url prefix or domain name like {w}.google-com")
 	bucketTyp := fs.String("provider", "aws", "bucket type like s3 (digital ocean, google,..)")
 	wordList := fs.String("wordlist", "", "path to word list for sub domain scan")
 	splitter := fs.String("splitter", ".", "splitter character between suffix and domain")
@@ -105,7 +105,7 @@ func scanBucket(settings *settingsBucketScan) {
 
 		for _, line := range lines {
 			time.Sleep(time.Duration(settings.Delay) * time.Millisecond)
-			prefix := strings.Replace(settings.Prefix,"{w}",line,1)
+			prefix := strings.Replace(settings.Prefix, "{w}", line, 1)
 
 			url := "https://" + prefix + "." + urlSuffix
 			resp, err := http.Get(url)

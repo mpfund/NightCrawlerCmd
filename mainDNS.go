@@ -26,7 +26,7 @@ type appSettings struct {
 func mainDNS() {
 	fs := flag.NewFlagSet("dns", flag.ExitOnError)
 
-	domain := fs.String("domain", "", "domain for dns scan")
+	domain := fs.String("domain", "", "domain for dns scan, use {w} for custom logic, like prod.{w}.google.com")
 	wordlist := fs.String("wordlist", "", "path to wordlist for subdomain scan")
 	logFile := fs.String("log", "dnsscan.log", "")
 	resume := fs.Bool("resume", false, "load log file and resume. skips already scanned urls")
@@ -87,14 +87,15 @@ func scanDNS(settings *appSettings) {
 	ds := new(crawlbase.DNSScanner)
 	ds.LoadConfigFromFile("./config/resolv.conf")
 	dnsResp := map[string][]string{}
-	if settings.SubdomainFile != "" {
+
+	if settings.SubdomainFile == "" {
+		resp, _ := ds.ResolveDNS(settings.Domain, settings.DNSTypeNumber)
+		dnsResp[settings.Domain] = resp
+	} else {
 		lines, err := crawlbase.ReadWordlist(settings.SubdomainFile)
 		checkError(err)
 		lines = filterLines(lines, settings)
 		dnsResp = ds.ScanDNS(lines, settings.Domain, settings.DNSTypeNumber)
-	} else {
-		resp, _ := ds.ResolveDNS(settings.Domain, settings.DNSTypeNumber)
-		dnsResp[settings.Domain] = resp
 	}
 
 	if settings.ReportFile == "" {
@@ -106,6 +107,7 @@ func scanDNS(settings *appSettings) {
 
 func filterLines(lines []string, settings *appSettings) []string {
 	var filteredLines []string
+
 	for _, line := range lines {
 		name := line + "." + settings.Domain + "."
 		_, inHistory := settings.History[name]
@@ -137,6 +139,7 @@ func dnsReportExcel(dnsResp map[string][]string, settings *appSettings) {
 
 func dnsReport(dnsResp map[string][]string, settings *appSettings) {
 	buffer := bytes.Buffer{}
+
 	for subDomain, entries := range dnsResp {
 		if len(entries) > 0 {
 			for _, entry := range entries {
