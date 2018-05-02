@@ -19,9 +19,10 @@ type crawlSettings struct {
 	MaxPages        int
 	StorageFolder   string
 	URLRegEx        string
-	followLinks     []string
-	dontFollowLinks []string
+	FollowLinks     []string
+	DontFollowLinks []string
 	NoNewLinks      bool
+	LoadResources   bool
 }
 
 /* usage examples:
@@ -51,6 +52,7 @@ func mainCrawler() {
 	noNewLinks := fs.Bool("no-new-links", false,
 		"dont crawl hrefs links. Use with url-list for example.")
 	scopeToDomain := fs.Bool("scoped-to-domain", true, "scope the crawler to the domain")
+	loadResource := fs.Bool("load-resources", false, "load ressources like images,css,js...")
 
 	var followLinks, followLinksNot arrayFlags
 	fs.Var(&followLinks, "links-follow", "some test flag")
@@ -70,9 +72,10 @@ func mainCrawler() {
 	settings.WaitTime = *waitFlag
 	settings.MaxPages = *maxPagesFlag
 	settings.StorageFolder = *storagePathFlag
-	settings.followLinks = followLinks
-	settings.dontFollowLinks = followLinksNot
+	settings.FollowLinks = followLinks
+	settings.DontFollowLinks = followLinksNot
 	settings.NoNewLinks = *noNewLinks
+	settings.LoadResources = *loadResource
 
 	cw := crawlbase.NewCrawler()
 	cw.WaitBetweenRequests = settings.WaitTime
@@ -169,19 +172,25 @@ func AfterCrawlFn(settings *crawlSettings, page *crawlbase.Page, err error) ([]s
 		return crawlLinks, nil
 	}
 
-	hasFollowFilter := len(settings.followLinks) > 0
-	hasDontFollowFilter := len(settings.dontFollowLinks) > 0
+	hasFollowFilter := len(settings.FollowLinks) > 0
+	hasDontFollowFilter := len(settings.DontFollowLinks) > 0
 
-	if !hasFollowFilter && !hasDontFollowFilter {
-		return page.RespInfo.Hrefs, err
+	if hasFollowFilter || hasDontFollowFilter {
+		for _, link := range page.RespInfo.Hrefs {
+			matchFollow := hasFollowFilter && containsAllText(settings.FollowLinks, link)
+			matchDontFollow := hasDontFollowFilter && containsAnyText(settings.DontFollowLinks, link)
+
+			if matchFollow && !matchDontFollow {
+				crawlLinks = append(crawlLinks, link)
+			}
+		}
+	} else {
+		copy(crawlLinks, page.RespInfo.Hrefs)
 	}
 
-	for _, link := range page.RespInfo.Hrefs {
-		matchFollow := hasFollowFilter && containsAllText(settings.followLinks, link)
-		matchDontFollow := hasDontFollowFilter && containsAnyText(settings.dontFollowLinks, link)
-
-		if matchFollow && !matchDontFollow {
-			crawlLinks = append(crawlLinks, link)
+	if settings.LoadResources {
+		for _, link := range page.RespInfo.Ressources {
+			crawlLinks = append(crawlLinks, link.Url)
 		}
 	}
 

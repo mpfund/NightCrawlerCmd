@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -18,6 +19,7 @@ var regFindUrlsRel = regexp.MustCompile(`[a-zA-Z0-9]*[\/\\][a-zA-Z0-9-\._\\]{4,}
 var regFindUrlsAbs = regexp.MustCompile(`[a-zA-Z]{2,}://[\w:-\\-\.\/]+`)
 var regFindStringsOnly = regexp.MustCompile(`\"([[:print:]]*?)\"`)
 var regFindStringsOnly2 = regexp.MustCompile(`\'([[:print:]]*?)\'`)
+var regFindEmail = regexp.MustCompile(`[a-zA-Z0-9_öäüÄÖÜß\-\.]{3,}@[a-zA-Z0-9_öäüÄÖÜß\.\-]{3,}`)
 
 var mutators = map[string]MutatorFunc{}
 
@@ -38,7 +40,7 @@ func mainWordList() {
 	source := fs.String("input", "", "files to read e.g. folder/*.txt")
 	output := fs.String("output", "wordlist.txt", "wordlist output")
 	extractor := fs.String("extractor", "word",
-		"how to extract words from text: none,word,keep_url,string,")
+		"how to extract words from text: none, word, url,url_abs, url_rel, string, email")
 	showFileName := fs.Bool("show-file-name", false, "")
 
 	fs.Parse(os.Args[2:])
@@ -186,14 +188,18 @@ func findAllWords(settings *settingsWordlist) map[string]bool {
 		var words []string
 
 		switch settings.Extractor {
-		case "keep_url":
+		case "url_rel":
+			words = regFindUrlsRel.FindAllString(textContent, -1)
+		case "url_abs":
+			words = regFindUrlsAbs.FindAllString(textContent, -1)
+		case "url":
 			words = regFindUrlsRel.FindAllString(textContent, -1)
 			words2 := regFindUrlsAbs.FindAllString(textContent, -1)
 			words = append(words, words2...)
-			break
+		case "email":
+			words = regFindEmail.FindAllString(textContent, -1)
 		case "word":
 			words = regFindWordLower.FindAllString(textContent, -1)
-			break
 		case "string":
 			words = regFindStringsOnly.FindAllString(textContent, -1)
 			words2 := regFindStringsOnly2.FindAllString(textContent, -1)
@@ -203,10 +209,10 @@ func findAllWords(settings *settingsWordlist) map[string]bool {
 				wordsCleared = append(wordsCleared, strings.Trim(t, "\"'"))
 			}
 			words = wordsCleared
-			break
 		case "none":
 			words = strings.Split(textContent, "\n")
-			break
+		default:
+			fmt.Print(settings.Extractor + " not found")
 		}
 
 		if settings.ShowFileName {
