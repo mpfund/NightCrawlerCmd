@@ -19,7 +19,7 @@ var regFindUrlsRel = regexp.MustCompile(`[a-zA-Z0-9]*[\/\\][a-zA-Z0-9-\._\\]{4,}
 var regFindUrlsAbs = regexp.MustCompile(`[a-zA-Z]{2,}://[\w:-\\-\.\/]+`)
 var regFindStringsOnly = regexp.MustCompile(`\"([[:print:]]*?)\"`)
 var regFindStringsOnly2 = regexp.MustCompile(`\'([[:print:]]*?)\'`)
-var regFindEmail = regexp.MustCompile(`[a-zA-Z0-9_öäüÄÖÜß\-\.]{3,}@[a-zA-Z0-9_öäüÄÖÜß\.\-]{3,}`)
+var regFindEmail = regexp.MustCompile(`[a-zA-Z0-9_öäüÄÖÜß\-\.]{3,}@[a-zA-Z0-9_öäüÄÖÜß\.\-]{2,}\.[a-zA-Z0-9_öäüÄÖÜß\.\-]{2,}`)
 
 var mutators = map[string]MutatorFunc{}
 
